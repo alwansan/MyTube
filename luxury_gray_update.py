@@ -1,4 +1,106 @@
-package org.alituama.mytube
+import os
+import subprocess
+
+def create_file(path, content):
+    directory = os.path.dirname(path)
+    if directory and not os.path.exists(directory):
+        os.makedirs(directory)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content.strip())
+    print(f"✅ Created: {path}")
+
+# ==========================================
+# 1. تصميم الأيقونة الفاخرة (Vector XML)
+# ==========================================
+# أيقونة خلفية (رمادي غامق)
+icon_background = """<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#263238"
+        android:pathData="M0,0h108v108h-108z" />
+</vector>
+"""
+
+# أيقونة أمامية (شعار التنزيل باللون الرمادي الفضي)
+icon_foreground = """<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#CFD8DC"
+        android:pathData="M54,19c-19.33,0 -35,15.67 -35,35 0,19.33 15.67,35 35,35s35,-15.67 35,-35c0,-19.33 -15.67,-35 -35,-35zM54,82c-15.46,0 -28,-12.54 -28,-28 0,-15.46 12.54,-28 28,-28s28,12.54 28,28c0,15.46 -12.54,28 -28,28z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,39l-13,13h8v14h10v-14h8z" />
+    <path
+        android:fillColor="#B0BEC5"
+        android:pathData="M41,68h26v4h-26z" />
+</vector>
+"""
+
+# ملف تعريف الأيقونة المتكيفة
+ic_launcher_xml = """<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/ic_launcher_background" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+</adaptive-icon>
+"""
+
+# ==========================================
+# 2. تحديث AndroidManifest لاستخدام الأيقونة
+# ==========================================
+manifest_content = """<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="MyTube"
+        android:requestLegacyExternalStorage="true"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.MyTube.Dialog"
+        android:usesCleartextTraffic="true" 
+        tools:targetApi="31">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.MyTube.Dialog">
+            
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
+"""
+
+# ==========================================
+# 3. تحديث MainActivity (معالجة الأخطاء بدقة)
+# ==========================================
+main_activity_code = """package org.alituama.mytube
 
 import android.Manifest
 import android.animation.ArgbEvaluator
@@ -211,3 +313,27 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 }
+"""
+
+if __name__ == "__main__":
+    # 1. إنشاء ملفات الأيقونة
+    create_file("app/src/main/res/drawable/ic_launcher_background.xml", icon_background)
+    create_file("app/src/main/res/drawable/ic_launcher_foreground.xml", icon_foreground)
+    
+    # 2. إنشاء مجلد mipmap (للأيقونة الرسمية)
+    mipmap_dir = "app/src/main/res/mipmap-anydpi-v26"
+    if not os.path.exists(mipmap_dir): os.makedirs(mipmap_dir)
+    create_file(f"{mipmap_dir}/ic_launcher.xml", ic_launcher_xml)
+
+    # 3. تحديث الكود والمانيفيست
+    create_file("app/src/main/java/org/alituama/mytube/MainActivity.kt", main_activity_code)
+    create_file("app/src/main/AndroidManifest.xml", manifest_content)
+    
+    print("\n🚀 Pushing Luxury Gray Update & API Fixes...")
+    try:
+        subprocess.run(["git", "add", "."], check=True)
+        subprocess.run(["git", "commit", "-m", "UI: New Gray Icon + Logic: Improved Error Handling"], check=True)
+        subprocess.run(["git", "push"], check=True)
+        print("✅ Done! Enjoy the new look.")
+    except Exception as e:
+        print(f"❌ Git Error: {e}")

@@ -12,7 +12,7 @@
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@android:drawable/ic_menu_save"
+        android:icon="@mipmap/ic_launcher"
         android:label="MyTube"
         android:requestLegacyExternalStorage="true"
         android:supportsRtl="true"
