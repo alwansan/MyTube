@@ -5,24 +5,18 @@ import android.util.Log
 import com.yausername.youtubedl_android.YoutubeDL
 
 object LibraryManager {
-    fun init(app: Application): String {
+    fun initialize(app: Application): Boolean {
         return try {
-            // 1. التهيئة الأولية (فك الضغط)
             YoutubeDL.getInstance().init(app)
-            "Initialized"
+            try {
+                YoutubeDL.getInstance().updateYoutubeDL(app, YoutubeDL.UpdateChannel.STABLE)
+            } catch (e: Exception) {
+                Log.w("MyTube", "Update failed, using embedded version")
+            }
+            true
         } catch (e: Exception) {
-            "Init Error: ${e.message}"
-        }
-    }
-
-    fun update(app: Application): String {
-        return try {
-            // 2. تحديث المحرك لتجاوز مشكلة Unsupported Client
-            // هذا يسحب أحدث نسخة من yt-dlp GitHub
-            YoutubeDL.getInstance().updateYoutubeDL(app, YoutubeDL.UpdateChannel.STABLE)
-            "Updated to Latest Version"
-        } catch (e: Exception) {
-            "Update Failed (Using Embedded): ${e.message}"
+            Log.e("MyTube", "Init failed", e)
+            false
         }
     }
 }

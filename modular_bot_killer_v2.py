@@ -1,9 +1,9 @@
 import os
 import shutil
-import subprocess
+import subprocess  # ✅ تمت إضافتها لضمان عمل أوامر Git
 
 # ==========================================
-# إعداد الأدوات
+# أدوات النظام
 # ==========================================
 def create_file(path, content):
     directory = os.path.dirname(path)
@@ -11,17 +11,25 @@ def create_file(path, content):
         os.makedirs(directory)
     with open(path, "w", encoding="utf-8") as f:
         f.write(content.strip())
-    print(f"✅ Created: {path}")
+    print(f"✅ Created Module: {path}")
 
-def clean_old_files():
-    # حذف ملف MainActivity القديم لأنه سيتعارض مع الهيكلية الجديدة
-    old_main = "app/src/main/java/org/alituama/mytube/MainActivity.kt"
-    if os.path.exists(old_main):
-        os.remove(old_main)
-        print("🗑️ Removed old MainActivity.kt")
+def clean_structure():
+    # تنظيف الكود القديم لضمان عدم التعارض
+    paths_to_clean = [
+        "app/src/main/java/org/alituama/mytube/MainActivity.kt",
+        "app/src/main/java/org/alituama/mytube/core",
+        "app/src/main/java/org/alituama/mytube/utils",
+        "app/src/main/java/org/alituama/mytube/ui",
+        "app/src/main/java/org/alituama/mytube/strategy"
+    ]
+    for p in paths_to_clean:
+        if os.path.exists(p):
+            if os.path.isdir(p): shutil.rmtree(p)
+            else: os.remove(p)
+    print("🧹 Old architecture cleaned.")
 
 # ==========================================
-# 1. إعداد Gradle (معالجة البناء)
+# 1. إعداد Gradle
 # ==========================================
 build_gradle_content = """
 plugins {
@@ -37,8 +45,8 @@ android {
         applicationId = "org.alituama.mytube"
         minSdk = 24
         targetSdk = 34
-        versionCode = 4
-        versionName = "4.0"
+        versionCode = 5
+        versionName = "5.0"
         
         ndk {
             abiFilters.add("armeabi-v7a")
@@ -81,7 +89,7 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     
-    // المكتبة الأساسية
+    // استخدام النسخة 0.17.2 المستقرة
     implementation("io.github.junkfood02.youtubedl-android:library:0.17.2")
     implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.17.2") 
     
@@ -91,8 +99,44 @@ dependencies {
 """
 
 # ==========================================
-# 2. ملف: Core/LibraryManager.kt
-# (وظيفته: التهيئة والتحديث الإجباري)
+# 2. ملف: Utils/PermissionHelper.kt
+# ==========================================
+permission_helper_code = """package org.alituama.mytube.utils
+
+import android.Manifest
+import android.app.Activity
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+
+object PermissionHelper {
+    private const val REQ_CODE = 100
+
+    fun checkAndRequest(activity: Activity) {
+        val permissions = mutableListOf<String>()
+        
+        if (Build.VERSION.SDK_INT >= 33) {
+            if (ContextCompat.checkSelfPermission(activity, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+        
+        if (Build.VERSION.SDK_INT <= 29) {
+            if (ContextCompat.checkSelfPermission(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }
+        }
+
+        if (permissions.isNotEmpty()) {
+            ActivityCompat.requestPermissions(activity, permissions.toTypedArray(), REQ_CODE)
+        }
+    }
+}
+"""
+
+# ==========================================
+# 3. ملف: Core/LibraryManager.kt
 # ==========================================
 library_manager_code = """package org.alituama.mytube.core
 
@@ -101,56 +145,57 @@ import android.util.Log
 import com.yausername.youtubedl_android.YoutubeDL
 
 object LibraryManager {
-    fun init(app: Application): String {
+    fun initialize(app: Application): Boolean {
         return try {
-            // 1. التهيئة الأولية (فك الضغط)
             YoutubeDL.getInstance().init(app)
-            "Initialized"
+            try {
+                YoutubeDL.getInstance().updateYoutubeDL(app, YoutubeDL.UpdateChannel.STABLE)
+            } catch (e: Exception) {
+                Log.w("MyTube", "Update failed, using embedded version")
+            }
+            true
         } catch (e: Exception) {
-            "Init Error: ${e.message}"
-        }
-    }
-
-    fun update(app: Application): String {
-        return try {
-            // 2. تحديث المحرك لتجاوز مشكلة Unsupported Client
-            // هذا يسحب أحدث نسخة من yt-dlp GitHub
-            YoutubeDL.getInstance().updateYoutubeDL(app, YoutubeDL.UpdateChannel.STABLE)
-            "Updated to Latest Version"
-        } catch (e: Exception) {
-            "Update Failed (Using Embedded): ${e.message}"
+            Log.e("MyTube", "Init failed", e)
+            false
         }
     }
 }
 """
 
 # ==========================================
-# 3. ملف: Utils/BotBypasser.kt
-# (وظيفته: تجهيز الرؤوس المزيفة للخداع)
+# 4. ملف: Strategy/AntiBotStrategy.kt
 # ==========================================
-bot_bypasser_code = """package org.alituama.mytube.utils
+anti_bot_code = """package org.alituama.mytube.strategy
 
 import com.yausername.youtubedl_android.YoutubeDLRequest
 
-object BotBypasser {
+enum class ClientMode {
+    ANDROID_MUSIC,
+    ANDROID_MAIN,
+    IOS,
+    TV_EMBEDDED
+}
+
+object AntiBotStrategy {
     
-    fun applyAntiBotConfig(request: YoutubeDLRequest, mode: String) {
+    fun configureRequest(request: YoutubeDLRequest, mode: ClientMode) {
         request.addOption("--no-check-certificates")
         request.addOption("--geo-bypass")
         request.addOption("--no-mtime")
-        
+        request.addOption("--compat-options", "no-youtube-unavailable-videos")
+
         when (mode) {
-            "ANDROID" -> {
-                // أفضل وضع حالياً
-                request.addOption("--extractor-args", "youtube:player_client=android")
+            ClientMode.ANDROID_MUSIC -> {
+                request.addOption("--extractor-args", "youtube:player_client=android_music")
                 request.addOption("--user-agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
             }
-            "IOS" -> {
-                request.addOption("--extractor-args", "youtube:player_client=ios")
-                request.addOption("--user-agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1")
+            ClientMode.ANDROID_MAIN -> {
+                request.addOption("--extractor-args", "youtube:player_client=android")
             }
-            "TV" -> {
-                // الوضع الذي حاولت استخدامه سابقاً (يتطلب نسخة حديثة جداً)
+            ClientMode.IOS -> {
+                request.addOption("--extractor-args", "youtube:player_client=ios")
+            }
+            ClientMode.TV_EMBEDDED -> {
                 request.addOption("--extractor-args", "youtube:player_client=android_tv")
             }
         }
@@ -159,69 +204,65 @@ object BotBypasser {
 """
 
 # ==========================================
-# 4. ملف: Core/DownloadEngine.kt
-# (وظيفته: إدارة التنزيل وتجربة الحلول بالتسلسل)
+# 5. ملف: Core/DownloadManager.kt
 # ==========================================
-download_engine_code = """package org.alituama.mytube.core
+download_manager_code = """package org.alituama.mytube.core
 
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
-import org.alituama.mytube.utils.BotBypasser
+import org.alituama.mytube.strategy.AntiBotStrategy
+import org.alituama.mytube.strategy.ClientMode
 import java.io.File
 
-class DownloadEngine(private val downloadDir: File) {
+class DownloadManager(private val saveDir: File) {
 
-    fun download(url: String, callback: (String, Float, Long) -> Unit): Boolean {
-        // المحاولة 1: عميل Android (الأكثر استقراراً)
-        try {
-            val request = createRequest(url)
-            BotBypasser.applyAntiBotConfig(request, "ANDROID")
-            execute(request, callback)
-            return true
-        } catch (e: Exception) {
-            // المحاولة 2: عميل iOS (احتياطي)
+    fun startDownload(url: String, onProgress: (String) -> Unit, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        
+        val strategies = listOf(
+            ClientMode.ANDROID_MUSIC,
+            ClientMode.ANDROID_MAIN,
+            ClientMode.IOS,
+            ClientMode.TV_EMBEDDED
+        )
+
+        var lastError = ""
+
+        for (mode in strategies) {
             try {
-                val request = createRequest(url)
-                BotBypasser.applyAntiBotConfig(request, "IOS")
-                execute(request, callback)
-                return true
-            } catch (e2: Exception) {
-                // المحاولة 3: وضع التوافق (بدون تحديد عميل)
-                throw Exception("All methods failed. Last error: ${e2.message}")
+                onProgress("Trying Strategy: ${mode.name}...")
+                
+                val request = YoutubeDLRequest(url)
+                request.addOption("-o", saveDir.absolutePath + "/%(title)s.%(ext)s")
+                request.addOption("-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best")
+                
+                AntiBotStrategy.configureRequest(request, mode)
+
+                YoutubeDL.getInstance().execute(request, null) { progress, eta, _ ->
+                    onProgress("$progress% | ETA: $eta s")
+                }
+                
+                onSuccess()
+                return 
+
+            } catch (e: Exception) {
+                lastError = e.message ?: "Unknown Error"
+                continue
             }
         }
-    }
-
-    private fun createRequest(url: String): YoutubeDLRequest {
-        val request = YoutubeDLRequest(url)
-        request.addOption("-o", downloadDir.absolutePath + "/%(title)s.%(ext)s")
-        // صيغة مضمونة لتعمل بدون دمج معقد
-        request.addOption("-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best")
-        return request
-    }
-
-    private fun execute(request: YoutubeDLRequest, callback: (String, Float, Long) -> Unit) {
-        YoutubeDL.getInstance().execute(request, null) { progress, eta, line ->
-            callback(line ?: "Processing", progress, eta)
-        }
+        
+        onError("All strategies failed. Last error: $lastError")
     }
 }
 """
 
 # ==========================================
-# 5. ملف: UI/MainActivity.kt
-# (وظيفته: ربط كل الملفات ببعضها)
+# 6. ملف: UI/MainActivity.kt
 # ==========================================
 main_activity_code = """package org.alituama.mytube.ui
 
-import android.Manifest
-import android.animation.ObjectAnimator
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.graphics.Color
-import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.text.Editable
@@ -231,24 +272,23 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.alituama.mytube.R
-import org.alituama.mytube.core.DownloadEngine
+import org.alituama.mytube.core.DownloadManager
 import org.alituama.mytube.core.LibraryManager
+import org.alituama.mytube.utils.PermissionHelper
 import java.io.File
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var tvStatus: TextView
     private lateinit var etUrl: TextInputEditText
-    private var isReady = false
-    private var lastUrl = ""
+    private var isEngineReady = false
+    private var lastProcessedUrl = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -257,106 +297,70 @@ class MainActivity : AppCompatActivity() {
         etUrl = findViewById(R.id.etUrl)
         tvStatus = findViewById(R.id.tvStatus)
         val btnFetch = findViewById<Button>(R.id.btnFetch)
-        val tvCredits = findViewById<TextView>(R.id.tvCredits)
 
-        setupPermissions()
-        initializeApp()
+        PermissionHelper.checkAndRequest(this)
 
-        // التنفيذ التلقائي
+        lifecycleScope.launch(Dispatchers.IO) {
+            withContext(Dispatchers.Main) { tvStatus.text = "Initializing Engine..." }
+            isEngineReady = LibraryManager.initialize(application)
+            withContext(Dispatchers.Main) { 
+                tvStatus.text = if (isEngineReady) "Ready" else "Engine Error"
+                if (etUrl.text.toString().contains("youtu")) executeDownload(etUrl.text.toString())
+            }
+        }
+
         etUrl.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: Editable?) {
                 val url = s.toString().trim()
-                if (url.contains("youtu") && url != lastUrl && isReady) {
-                    lastUrl = url
-                    startDownloadProcess(url)
+                if (url.contains("youtu") && url != lastProcessedUrl && isEngineReady) {
+                    lastProcessedUrl = url
+                    executeDownload(url)
                 }
             }
         })
 
-        // الاستقبال من المشاركة
         if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
             intent.getStringExtra(Intent.EXTRA_TEXT)?.let { etUrl.setText(it) }
         }
 
         btnFetch.setOnClickListener {
             val url = etUrl.text.toString()
-            if (url.isNotEmpty()) startDownloadProcess(url)
+            if (url.isNotEmpty()) executeDownload(url)
             else checkClipboard()
         }
     }
 
-    private fun initializeApp() {
-        lifecycleScope.launch(Dispatchers.IO) {
-            withContext(Dispatchers.Main) { tvStatus.text = "Initializing System..." }
-            
-            val initResult = LibraryManager.init(application)
-            
-            withContext(Dispatchers.Main) { tvStatus.text = "Updating Engine..." }
-            val updateResult = LibraryManager.update(application)
-            
-            isReady = true
-            withContext(Dispatchers.Main) { 
-                tvStatus.text = "Ready ($updateResult)"
-                // فحص إذا كان هناك رابط تم لصقه أثناء التهيئة
-                if (etUrl.text.toString().contains("youtu")) {
-                    startDownloadProcess(etUrl.text.toString())
-                }
-            }
-        }
-    }
+    private fun executeDownload(url: String) {
+        if (!isEngineReady) return
 
-    private fun startDownloadProcess(url: String) {
-        tvStatus.setTextColor(Color.LTGRAY)
-        tvStatus.text = "Starting Engine..."
-        
         val dir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "MyTube")
         if (!dir.exists()) dir.mkdirs()
 
-        val engine = DownloadEngine(dir)
+        val manager = DownloadManager(dir)
 
         lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                withContext(Dispatchers.Main) { tvStatus.text = "Downloading..." }
-                
-                engine.download(url) { line, progress, eta ->
+            manager.startDownload(
+                url = url,
+                onProgress = { msg ->
+                    runOnUiThread { tvStatus.text = msg }
+                },
+                onSuccess = {
                     runOnUiThread {
-                        tvStatus.text = "$progress% | ETA: $eta s"
+                        tvStatus.text = "✅ Download Complete"
+                        Toast.makeText(this@MainActivity, "Saved to Downloads", Toast.LENGTH_LONG).show()
+                        etUrl.text?.clear()
+                        lastProcessedUrl = ""
+                    }
+                },
+                onError = { error ->
+                    runOnUiThread {
+                        tvStatus.text = "Failed"
+                        showError(error)
                     }
                 }
-
-                withContext(Dispatchers.Main) {
-                    tvStatus.setTextColor(Color.GREEN)
-                    tvStatus.text = "✅ Success!"
-                    Toast.makeText(this@MainActivity, "Video Saved!", Toast.LENGTH_LONG).show()
-                    etUrl.text?.clear()
-                    lastUrl = ""
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    tvStatus.setTextColor(Color.RED)
-                    tvStatus.text = "Failed"
-                    AlertDialog.Builder(this@MainActivity)
-                        .setTitle("Download Error")
-                        .setMessage(e.message)
-                        .setPositiveButton("OK", null)
-                        .show()
-                }
-            }
-        }
-    }
-
-    private fun setupPermissions() {
-        if (Build.VERSION.SDK_INT >= 33) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != 0) {
-                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 100)
-            }
-        }
-        if (Build.VERSION.SDK_INT <= 29) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != 0) {
-                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 101)
-            }
+            )
         }
     }
 
@@ -367,11 +371,19 @@ class MainActivity : AppCompatActivity() {
             etUrl.setText(clip.getItemAt(0).text.toString())
         }
     }
+
+    private fun showError(msg: String) {
+        AlertDialog.Builder(this)
+            .setTitle("Report")
+            .setMessage(msg)
+            .setPositiveButton("OK", null)
+            .show()
+    }
 }
 """
 
 # ==========================================
-# 6. تحديث Manifest (ليشير للملف الجديد)
+# 7. ملف: AndroidManifest.xml
 # ==========================================
 manifest_content = """<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
@@ -394,7 +406,6 @@ manifest_content = """<?xml version="1.0" encoding="utf-8"?>
         android:theme="@style/Theme.MyTube.Dialog"
         tools:targetApi="31">
 
-        <!-- لاحظ تغيير اسم النشاط إلى المسار الجديد -->
         <activity
             android:name=".ui.MainActivity"
             android:exported="true"
@@ -416,21 +427,22 @@ manifest_content = """<?xml version="1.0" encoding="utf-8"?>
 """
 
 # ==========================================
-# التنفيذ
+# تنفيذ العملية والرفع
 # ==========================================
-clean_old_files()
+clean_structure()
 create_file("app/build.gradle.kts", build_gradle_content)
+create_file("app/src/main/java/org/alituama/mytube/utils/PermissionHelper.kt", permission_helper_code)
 create_file("app/src/main/java/org/alituama/mytube/core/LibraryManager.kt", library_manager_code)
-create_file("app/src/main/java/org/alituama/mytube/core/DownloadEngine.kt", download_engine_code)
-create_file("app/src/main/java/org/alituama/mytube/utils/BotBypasser.kt", bot_bypasser_code)
+create_file("app/src/main/java/org/alituama/mytube/strategy/AntiBotStrategy.kt", anti_bot_code)
+create_file("app/src/main/java/org/alituama/mytube/core/DownloadManager.kt", download_manager_code)
 create_file("app/src/main/java/org/alituama/mytube/ui/MainActivity.kt", main_activity_code)
 create_file("app/src/main/AndroidManifest.xml", manifest_content)
 
 print("\n🚀 Pushing Modular Architecture to GitHub...")
 try:
     subprocess.run(["git", "add", "."], check=True)
-    subprocess.run(["git", "commit", "-m", "Modular Fix: Split Logic, Auto-Update, Anti-Bot"], check=True)
+    subprocess.run(["git", "commit", "-m", "Architecture: Modular Design + Fixed Script Import"], check=True)
     subprocess.run(["git", "push"], check=True)
-    print("✅ Done! System restructured.")
+    print("✅ Pushed successfully!")
 except Exception as e:
     print(f"❌ Git Error: {e}")
