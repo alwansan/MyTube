@@ -1,52 +1,43 @@
-import os
+from pathlib import Path
 
-# محتوى ملف البناء الصحيح 100%
-yaml_content = """name: Build Android APK
+print("🔧 Preparing Android build environment...")
 
-on:
-  push:
-    branches: [ "main" ]
-  workflow_dispatch:
+# مسار المشروع
+root = Path(".")
 
-jobs:
-  build:
-    name: Build APK
-    runs-on: ubuntu-latest
+# ===============================
+# 1. gradle.properties
+# ===============================
+gradle_props = root / "gradle.properties"
 
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '8.5'
-
-      - name: Accept Android Licenses
-        run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
-
-      - name: Build Debug APK
-        run: gradle assembleDebug --stacktrace
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: MyTube-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+gradle_content = """\
+android.useAndroidX=true
+android.enableJetifier=true
+org.gradle.jvmargs=-Xmx4g
+kotlin.code.style=official
 """
 
-# التأكد من المجلد
-os.makedirs(".github/workflows", exist_ok=True)
+gradle_props.write_text(gradle_content, encoding="utf-8")
+print("✅ gradle.properties created")
 
-# كتابة الملف
-with open(".github/workflows/build.yml", "w") as f:
-    f.write(yaml_content)
+# ===============================
+# 2. local.properties (لـ CI)
+# ===============================
+local_props = root / "local.properties"
+local_props.write_text(
+    "sdk.dir=/usr/local/lib/android/sdk\n",
+    encoding="utf-8"
+)
+print("✅ local.properties created")
 
-print("✅ تم إنشاء ملف البناء الجديد بصيغة سليمة 100%")
+# ===============================
+# 3. تحقق من وجود app module
+# ===============================
+app_dir = root / "app"
+if not app_dir.exists():
+    print("❌ app/ directory not found — Android project is broken")
+    exit(1)
+
+print("✅ Android app module detected")
+
+print("\n🚀 Project is ready for GitHub Actions APK build")
