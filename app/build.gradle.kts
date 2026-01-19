@@ -11,9 +11,10 @@ android {
         applicationId = "org.alituama.mytube"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "2.0"
         
+        // إجبار النظام على دمج كل المكتبات
         ndk {
             abiFilters.add("armeabi-v7a")
             abiFilters.add("arm64-v8a")
@@ -55,7 +56,7 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     
-    // المكتبة الأساسية
+    // استخدام النسخة الموثوقة
     implementation("io.github.junkfood02.youtubedl-android:library:0.17.2")
     implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.17.2") 
     
