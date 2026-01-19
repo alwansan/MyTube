@@ -4,16 +4,22 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- النجمة الثمانية السيريانية -->
+    
+    <!-- النجمة الثمانية المفرغة (حواف فقط) -->
     <path
-        android:fillColor="#FFC107"
-        android:pathData="M54,10 L63,38 L92,38 L68,54 L77,82 L54,66 L31,82 L40,54 L16,38 L45,38 Z" />
-    <!-- العين الغامضة في الوسط -->
+        android:strokeWidth="2.5"
+        android:strokeColor="#FFD700"
+        android:fillColor="#00000000"
+        android:pathData="M54,12 L62,38 L88,38 L68,54 L76,80 L54,66 L32,80 L40,54 L20,38 L46,38 Z" />
+        
+    <!-- دائرة غامضة في الوسط (العين) -->
     <path
-        android:fillColor="#212121"
-        android:pathData="M54,44 C60,44 64,48 64,53 C64,58 60,62 54,62 C48,62 44,58 44,53 C44,48 48,44 54,44 Z" />
-    <!-- بؤرة العين -->
+        android:fillColor="#FFD700"
+        android:pathData="M54,51 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
+        
+    <!-- خطوط إشعاعية رفيعة جداً -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,50 A3,3 0 1,1 54,56 A3,3 0 0,1 54,50" />
+        android:strokeWidth="0.5"
+        android:strokeColor="#FFC107"
+        android:pathData="M54,12 L54,5 M54,103 L54,96 M12,54 L5,54 M103,54 L96,54" />
 </vector>

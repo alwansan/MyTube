@@ -1,4 +1,112 @@
-package org.alituama.mytube
+import os
+import subprocess
+
+def create_file(path, content):
+    directory = os.path.dirname(path)
+    if directory and not os.path.exists(directory):
+        os.makedirs(directory)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content.strip())
+    print(f"✅ Created: {path}")
+
+# ==========================================
+# 1. تصميم الأيقونة الجديدة (نجمة مفرغة غامضة)
+# ==========================================
+# الخلفية: رمادي فحمي داكن جداً (Mysterious Dark)
+icon_background = """<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#121212"
+        android:pathData="M0,0h108v108h-108z" />
+    <!-- نقش خفيف جداً في الخلفية لإعطاء عمق -->
+    <path
+        android:fillColor="#1F1F1F"
+        android:pathData="M54,0 L108,54 L54,108 L0,54 Z" />
+</vector>
+"""
+
+# الأمامية: نجمة ذهبية مفرغة (Stroke Only)
+icon_foreground = """<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- النجمة الثمانية المفرغة (حواف فقط) -->
+    <path
+        android:strokeWidth="2.5"
+        android:strokeColor="#FFD700"
+        android:fillColor="#00000000"
+        android:pathData="M54,12 L62,38 L88,38 L68,54 L76,80 L54,66 L32,80 L40,54 L20,38 L46,38 Z" />
+        
+    <!-- دائرة غامضة في الوسط (العين) -->
+    <path
+        android:fillColor="#FFD700"
+        android:pathData="M54,51 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
+        
+    <!-- خطوط إشعاعية رفيعة جداً -->
+    <path
+        android:strokeWidth="0.5"
+        android:strokeColor="#FFC107"
+        android:pathData="M54,12 L54,5 M54,103 L54,96 M12,54 L5,54 M103,54 L96,54" />
+</vector>
+"""
+
+# ==========================================
+# 2. ملف Gradle (التأكد من المكتبات)
+# ==========================================
+build_gradle_content = """
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+}
+
+android {
+    namespace = "org.alituama.mytube"
+    compileSdk = 34
+
+    defaultConfig {
+        applicationId = "org.alituama.mytube"
+        minSdk = 24
+        targetSdk = 34
+        versionCode = 12
+        versionName = "12.0"
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+    kotlinOptions { jvmTarget = "1.8" }
+    buildFeatures { viewBinding = true }
+}
+
+dependencies {
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.google.android.material:material:1.11.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+}
+"""
+
+# ==========================================
+# 3. MainActivity (نظام التبديل بين السيرفرات)
+# ==========================================
+main_activity_code = """package org.alituama.mytube
 
 import android.Manifest
 import android.animation.ArgbEvaluator
@@ -169,7 +277,7 @@ class MainActivity : AppCompatActivity() {
                     lastProcessedUrl = ""
                     tvStatus.setTextColor(Color.RED)
                     tvStatus.text = "Busy Servers"
-                    showError("All servers are busy or require auth.\nLast Error: $lastError")
+                    showError("All servers are busy or require auth.\\nLast Error: $lastError")
                 }
             }
         }
@@ -244,3 +352,24 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 }
+"""
+
+if __name__ == "__main__":
+    # 1. تحديث الأيقونات
+    create_file("app/src/main/res/drawable/ic_launcher_background.xml", icon_background)
+    create_file("app/src/main/res/drawable/ic_launcher_foreground.xml", icon_foreground)
+    
+    # 2. تحديث Gradle
+    create_file("app/build.gradle.kts", build_gradle_content)
+    
+    # 3. تحديث الكود
+    create_file("app/src/main/java/org/alituama/mytube/MainActivity.kt", main_activity_code)
+    
+    print("\n🚀 Pushing 2026 Fixes: Hollow Star + Multi-Server Failover...")
+    try:
+        subprocess.run(["git", "add", "."], check=True)
+        subprocess.run(["git", "commit", "-m", "Final 2026 Fix: Hollow Syriac Star + Server Rotation"], check=True)
+        subprocess.run(["git", "push"], check=True)
+        print("✅ Done! Download should work now.")
+    except Exception as e:
+        print(f"❌ Git Error: {e}")
