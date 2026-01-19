@@ -12,7 +12,6 @@
         android:layout_height="wrap_content"
         android:padding="20dp">
 
-        <!-- العنوان -->
         <TextView
             android:id="@+id/tvTitle"
             android:layout_width="wrap_content"
@@ -24,7 +23,6 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <!-- حقل النص مع زر اللصق -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/inputLayout"
             android:layout_width="0dp"
@@ -36,7 +34,7 @@
             app:boxStrokeColor="#FF0000"
             app:hintTextColor="#FF0000"
             app:endIconMode="clear_text"
-            app:startIconDrawable="@android:drawable/ic_menu_paste_holo_light"
+            app:startIconDrawable="@android:drawable/ic_menu_edit"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/tvTitle">
@@ -49,7 +47,6 @@
                 android:inputType="textUri" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- زر البحث -->
         <Button
             android:id="@+id/btnFetch"
             android:layout_width="match_parent"
@@ -61,7 +58,6 @@
             android:backgroundTint="#FF0000"
             app:layout_constraintTop_toBottomOf="@id/inputLayout" />
 
-        <!-- حالة التحميل -->
         <TextView
             android:id="@+id/tvStatus"
             android:layout_width="wrap_content"
@@ -73,7 +69,6 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/btnFetch" />
 
-        <!-- الحقوق المتحركة -->
         <TextView
             android:id="@+id/tvCredits"
             android:layout_width="wrap_content"
