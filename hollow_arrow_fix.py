@@ -1,4 +1,68 @@
-package org.alituama.mytube
+import os
+import subprocess
+
+def create_file(path, content):
+    directory = os.path.dirname(path)
+    if directory and not os.path.exists(directory):
+        os.makedirs(directory)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content.strip())
+    print(f"✅ Created: {path}")
+
+# ==========================================
+# 1. تصميم الأيقونة (سهم مجوف غامض)
+# ==========================================
+# الخلفية: رمادي فحمي معتم
+icon_background = """<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#121212"
+        android:pathData="M0,0h108v108h-108z" />
+    <path
+        android:fillColor="#1C1C1C"
+        android:pathData="M54,0 L108,0 L54,108 L0,108 Z" />
+</vector>
+"""
+
+# الأمامية: سهم مجوف (حواف ذهبية فقط)
+icon_foreground = """<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- السهم المجوف (Outline) -->
+    <path
+        android:strokeWidth="3"
+        android:strokeColor="#FFD700"
+        android:fillColor="#00000000"
+        android:strokeLineJoin="round"
+        android:strokeLineCap="round"
+        android:pathData="M34,48 L34,22 L74,22 L74,48 L92,48 L54,86 L16,48 Z" />
+        
+    <!-- زخرفة سيريانية داخلية (خط عمودي) -->
+    <path
+        android:strokeWidth="1.5"
+        android:strokeColor="#C5A028"
+        android:strokeLineCap="round"
+        android:pathData="M54,28 L54,65" />
+        
+    <!-- نقطة غامضة في الأسفل -->
+    <path
+        android:fillColor="#FFD700"
+        android:pathData="M54,94 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0" />
+</vector>
+"""
+
+# ==========================================
+# 2. MainActivity (قائمة سيرفرات جديدة ونظيفة)
+# ==========================================
+main_activity_code = """package org.alituama.mytube
 
 import android.Manifest
 import android.animation.ArgbEvaluator
@@ -166,7 +230,7 @@ class MainActivity : AppCompatActivity() {
                     lastProcessedUrl = ""
                     tvStatus.setTextColor(Color.RED)
                     tvStatus.text = "All Servers Busy"
-                    showError("Connection Failed.\nLast Error: $lastError")
+                    showError("Connection Failed.\\nLast Error: $lastError")
                 }
             }
         }
@@ -241,3 +305,21 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 }
+"""
+
+if __name__ == "__main__":
+    # تحديث الأيقونات
+    create_file("app/src/main/res/drawable/ic_launcher_background.xml", icon_background)
+    create_file("app/src/main/res/drawable/ic_launcher_foreground.xml", icon_foreground)
+    
+    # تحديث الكود
+    create_file("app/src/main/java/org/alituama/mytube/MainActivity.kt", main_activity_code)
+    
+    print("\n🚀 Pushing Hollow Arrow Icon & New Server List...")
+    try:
+        subprocess.run(["git", "add", "."], check=True)
+        subprocess.run(["git", "commit", "-m", "UI: Hollow Arrow Icon + Logic: Updated 2026 Server List"], check=True)
+        subprocess.run(["git", "push"], check=True)
+        print("✅ Done! Check the new design.")
+    except Exception as e:
+        print(f"❌ Git Error: {e}")

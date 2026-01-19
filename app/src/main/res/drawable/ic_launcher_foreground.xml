@@ -5,21 +5,24 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     
-    <!-- النجمة الثمانية المفرغة (حواف فقط) -->
+    <!-- السهم المجوف (Outline) -->
     <path
-        android:strokeWidth="2.5"
+        android:strokeWidth="3"
         android:strokeColor="#FFD700"
         android:fillColor="#00000000"
-        android:pathData="M54,12 L62,38 L88,38 L68,54 L76,80 L54,66 L32,80 L40,54 L20,38 L46,38 Z" />
+        android:strokeLineJoin="round"
+        android:strokeLineCap="round"
+        android:pathData="M34,48 L34,22 L74,22 L74,48 L92,48 L54,86 L16,48 Z" />
         
-    <!-- دائرة غامضة في الوسط (العين) -->
+    <!-- زخرفة سيريانية داخلية (خط عمودي) -->
+    <path
+        android:strokeWidth="1.5"
+        android:strokeColor="#C5A028"
+        android:strokeLineCap="round"
+        android:pathData="M54,28 L54,65" />
+        
+    <!-- نقطة غامضة في الأسفل -->
     <path
         android:fillColor="#FFD700"
-        android:pathData="M54,51 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
-        
-    <!-- خطوط إشعاعية رفيعة جداً -->
-    <path
-        android:strokeWidth="0.5"
-        android:strokeColor="#FFC107"
-        android:pathData="M54,12 L54,5 M54,103 L54,96 M12,54 L5,54 M103,54 L96,54" />
+        android:pathData="M54,94 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0" />
 </vector>
