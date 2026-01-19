@@ -1,0 +1,53 @@
+steps:
+# 1. جلب الكود
+- name: Checkout Code
+  uses: actions/checkout@v3
+
+# 2. إعداد الجافا 17
+- name: Set up JDK 17
+  uses: actions/setup-java@v3
+  with:
+    java-version: '17'
+    distribution: 'temurin'
+
+# 3. إعداد Android SDK 34 (يدوياً)
+- name: Setup Android SDK
+  uses: android-actions/setup-android@v3
+  with:
+    cmdline-tools-version: 11076708
+
+- name: Install Android Platform 34
+  run: |
+    yes | sdkmanager --licenses
+    sdkmanager "platforms;android-34" "build-tools;34.0.0"
+
+# 4. إنشاء ملف local.properties (مهم جداً)
+- name: Create local.properties
+  run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+
+# 5. تحميل Gradle 8.2 وتثبيته يدوياً (لتجاوز كل مشاكل النسخ)
+- name: Setup Gradle 8.2
+  run: |
+    wget https://services.gradle.org/distributions/gradle-8.2-bin.zip -P /tmp
+    sudo unzip -d /opt/gradle /tmp/gradle-8.2-bin.zip
+    echo "GRADLE_HOME=/opt/gradle/gradle-8.2" >> $GITHUB_ENV
+    echo "/opt/gradle/gradle-8.2/bin" >> $GITHUB_PATH
+
+# 6. بناء التطبيق
+- name: Build APK
+  run: gradle assembleDebug --stacktrace
+
+# 7. رفع النتيجة
+- name: Upload APK
+  uses: actions/upload-artifact@v3
+  with:
+    name: MyTube-APK
+    path: app/build/outputs/apk/debug/app-debug.apk
+"""
+
+# كتابة الملف
+with open(".github/workflows/build.yml", "w") as f:
+    f.write(manual_workflow)
+
+print("✅ تم تحديث خطة البناء لتكون يدوية وشاملة!")
+```
