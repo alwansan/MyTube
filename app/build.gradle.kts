@@ -40,8 +40,8 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     
     // مكتبة التحميل القوية (YoutubeDL-Android)
-    implementation("com.github.yausername.youtubedl-android:library:0.14.0")
-    implementation("com.github.yausername.youtubedl-android:ffmpeg:0.14.0") // لدعم الدمج و 4K
+    implementation("io.github.junkfood02.youtubedl-android:library:0.17.2")
+    implementation("io.github.junkfood02.youtubedl-android:library:0.17.2") // لدعم الدمج و 4K
     
     // للمعالجة في الخلفية
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
