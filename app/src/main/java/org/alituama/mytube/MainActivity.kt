@@ -27,11 +27,10 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // 1. تهيئة مكتبة التحميل
         try {
             YoutubeDL.getInstance().init(application)
         } catch (e: Exception) {
-            Toast.makeText(this, "Error initializing libs", Toast.LENGTH_LONG).show()
+            e.printStackTrace()
         }
 
         val etUrl = findViewById<TextInputEditText>(R.id.etUrl)
@@ -39,26 +38,21 @@ class MainActivity : AppCompatActivity() {
         val tvStatus = findViewById<TextView>(R.id.tvStatus)
         val tvCredits = findViewById<TextView>(R.id.tvCredits)
 
-        // 2. تشغيل انيميشن الحقوق
         animateCredits(tvCredits)
 
-        // 3. التعامل مع المشاركة (Share Intent)
-        // عند مشاركة رابط من يوتيوب، سيتم وضعه هنا تلقائياً
         if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
             val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT)
             if (sharedText != null) {
                 etUrl.setText(sharedText)
-                startDownload(sharedText, tvStatus) // بدء تلقائي
+                startDownload(sharedText, tvStatus)
             }
         }
 
-        // 4. زر البحث واللصق
         btnFetch.setOnClickListener {
             val url = etUrl.text.toString()
             if (url.isNotEmpty()) {
                 startDownload(url, tvStatus)
             } else {
-                // لصق تلقائي إذا كان الحقل فارغاً
                 val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 val clipData = clipboard.primaryClip
                 if (clipData != null && clipData.itemCount > 0) {
@@ -71,24 +65,21 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startDownload(url: String, statusView: TextView) {
-        statusView.text = "Initializing download..."
+        statusView.text = "Initializing..."
         
-        // المسار: /storage/emulated/0/Download/MyTube
         val downloadDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "MyTube")
         if (!downloadDir.exists()) downloadDir.mkdirs()
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                // إعدادات التحميل: أفضل فيديو + أفضل صوت
                 val request = YoutubeDLRequest(url)
                 request.addOption("-o", downloadDir.absolutePath + "/%(title)s.%(ext)s")
                 request.addOption("-f", "bestvideo+bestaudio/best") 
                 
                 withContext(Dispatchers.Main) {
-                    statusView.text = "Downloading... (Check notifications)"
+                    statusView.text = "Downloading..."
                 }
 
-                // بدء التحميل
                 YoutubeDL.getInstance().execute(request) { progress, eta ->
                     runOnUiThread {
                         statusView.text = "Progress: $progress% (ETA: $eta s)"
@@ -96,12 +87,12 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 withContext(Dispatchers.Main) {
-                    statusView.text = "✅ Download Complete!"
-                    Toast.makeText(this@MainActivity, "Saved to MyTube folder", Toast.LENGTH_LONG).show()
+                    statusView.text = "Done! Check Downloads/MyTube"
+                    Toast.makeText(this@MainActivity, "Saved!", Toast.LENGTH_LONG).show()
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    statusView.text = "❌ Error: ${e.message}"
+                    statusView.text = "Error: " + e.message
                 }
             }
         }
