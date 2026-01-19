@@ -2,7 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- تصريحات الإنترنت والتخزين -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
@@ -20,8 +19,9 @@
         android:theme="@style/Theme.MyTube.Dialog"
         tools:targetApi="31">
 
+        <!-- لاحظ تغيير اسم النشاط إلى المسار الجديد -->
         <activity
-            android:name=".MainActivity"
+            android:name=".ui.MainActivity"
             android:exported="true"
             android:theme="@style/Theme.MyTube.Dialog">
             
