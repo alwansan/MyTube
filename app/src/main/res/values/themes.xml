@@ -1,0 +1,13 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- الثيم الشفاف (النافذة العائمة) -->
+    <style name="Theme.MyTube.Dialog" parent="Theme.Material3.DayNight.Dialog">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <!-- جعل النافذة تأخذ عرض الشاشة تقريباً -->
+        <item name="android:windowMinWidthMajor">90%</item>
+        <item name="android:windowMinWidthMinor">90%</item>
+        <item name="colorPrimary">#FF0000</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+    </style>
+</resources>
