@@ -1,4 +1,22 @@
-package org.alituama.mytube
+import os
+
+# ==========================================
+# دالة مساعدة
+# ==========================================
+def create_file(path, content):
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content.strip())
+    print(f"✅ Updated: {path}")
+
+# ==========================================
+# تحديث MainActivity.kt فقط
+# ==========================================
+# التغييرات:
+# 1. إضافة دالة checkAndRequestPermissions لطلب الإذن من المستخدم.
+# 2. تحسين دالة initYoutubeDL لتكون غير متزامنة وتعرض الخطأ على الشاشة.
+# 3. منع التحميل إذا لم تكن المكتبة مهيأة.
+
+kotlin_content = """package org.alituama.mytube
 
 import android.Manifest
 import android.animation.ArgbEvaluator
@@ -183,3 +201,17 @@ class MainActivity : AppCompatActivity() {
         colorAnim.start()
     }
 }
+"""
+
+if __name__ == "__main__":
+    create_file("app/src/main/java/org/alituama/mytube/MainActivity.kt", kotlin_content)
+    
+    print("\n🚀 Pushing logic updates to GitHub...")
+    import subprocess
+    try:
+        subprocess.run(["git", "add", "."], check=True)
+        subprocess.run(["git", "commit", "-m", "Fix: Add Permissions & Async Init"], check=True)
+        subprocess.run(["git", "push"], check=True)
+        print("✅ Done! New build triggered.")
+    except Exception as e:
+        print(f"❌ Git Error: {e}")
