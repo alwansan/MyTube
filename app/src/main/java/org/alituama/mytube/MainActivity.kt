@@ -80,8 +80,7 @@ class MainActivity : AppCompatActivity() {
                     statusView.text = "Downloading..."
                 }
 
-                // FIX: Added 'line' parameter here because library expects 3 args
-                YoutubeDL.getInstance().execute(request, null) { progress, eta, line ->
+                YoutubeDL.getInstance().execute(request) { progress, eta ->
                     runOnUiThread {
                         statusView.text = "Progress: $progress% (ETA: $eta s)"
                     }
