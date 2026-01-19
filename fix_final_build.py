@@ -1,4 +1,107 @@
-package org.alituama.mytube
+import os
+import subprocess
+
+def create_file(path, content):
+    directory = os.path.dirname(path)
+    if directory and not os.path.exists(directory):
+        os.makedirs(directory)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content.strip())
+    print(f"✅ Created: {path}")
+
+# ==========================================
+# 1. تصميم الأيقونة (النجمة السيريانية الغامضة)
+# ==========================================
+icon_background = """<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#212121"
+        android:pathData="M0,0h108v108h-108z" />
+    <path
+        android:fillColor="#000000"
+        android:fillAlpha="0.4"
+        android:pathData="M54,54 m-40,0 a40,40 0 1,0 80,0 a40,40 0 1,0 -80,0" />
+</vector>
+"""
+
+icon_foreground = """<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- النجمة الثمانية السيريانية -->
+    <path
+        android:fillColor="#FFC107"
+        android:pathData="M54,10 L63,38 L92,38 L68,54 L77,82 L54,66 L31,82 L40,54 L16,38 L45,38 Z" />
+    <!-- العين الغامضة في الوسط -->
+    <path
+        android:fillColor="#212121"
+        android:pathData="M54,44 C60,44 64,48 64,53 C64,58 60,62 54,62 C48,62 44,58 44,53 C44,48 48,44 54,44 Z" />
+    <!-- بؤرة العين -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,50 A3,3 0 1,1 54,56 A3,3 0 0,1 54,50" />
+</vector>
+"""
+
+# ==========================================
+# 2. ملف Gradle (إصلاح الاعتمادات المفقودة)
+# ==========================================
+build_gradle_content = """
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+}
+
+android {
+    namespace = "org.alituama.mytube"
+    compileSdk = 34
+
+    defaultConfig {
+        applicationId = "org.alituama.mytube"
+        minSdk = 24
+        targetSdk = 34
+        versionCode = 11
+        versionName = "11.0"
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+    kotlinOptions { jvmTarget = "1.8" }
+    buildFeatures { viewBinding = true }
+}
+
+dependencies {
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.google.android.material:material:1.11.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    
+    // 🟢 المكتبة الضرورية التي كانت مفقودة وتسبب فشل البناء
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+}
+"""
+
+# ==========================================
+# 3. MainActivity (تحديث لبروتوكول v10)
+# ==========================================
+main_activity_code = """package org.alituama.mytube
 
 import android.Manifest
 import android.animation.ArgbEvaluator
@@ -226,3 +329,24 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 }
+"""
+
+if __name__ == "__main__":
+    # 1. تحديث أيقونات النجمة السيريانية
+    create_file("app/src/main/res/drawable/ic_launcher_background.xml", icon_background)
+    create_file("app/src/main/res/drawable/ic_launcher_foreground.xml", icon_foreground)
+    
+    # 2. إضافة مكتبة OkHttp إلى Gradle
+    create_file("app/build.gradle.kts", build_gradle_content)
+    
+    # 3. تحديث الكود للبروتوكول الجديد
+    create_file("app/src/main/java/org/alituama/mytube/MainActivity.kt", main_activity_code)
+    
+    print("\n🚀 Pushing Final Build Fix & New Icon...")
+    try:
+        subprocess.run(["git", "add", "."], check=True)
+        subprocess.run(["git", "commit", "-m", "Final: Add OkHttp, New Icon, Fix API Protocol"], check=True)
+        subprocess.run(["git", "push"], check=True)
+        print("✅ Done! Build should succeed now.")
+    except Exception as e:
+        print(f"❌ Git Error: {e}")
