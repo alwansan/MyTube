@@ -1,4 +1,65 @@
-package org.alituama.mytube
+import os
+import subprocess
+
+def create_file(path, content):
+    directory = os.path.dirname(path)
+    if directory and not os.path.exists(directory):
+        os.makedirs(directory)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content.strip())
+    print(f"✅ Created: {path}")
+
+# ==========================================
+# 1. الأيقونة الغامضة (نجمة سيريانية مريبة)
+# ==========================================
+# الخلفية: رمادي داكن معدني (مريب)
+icon_background = """<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#212121"
+        android:pathData="M0,0h108v108h-108z" />
+    <!-- تأثير ظلال غامضة -->
+    <path
+        android:fillColor="#000000"
+        android:fillAlpha="0.3"
+        android:pathData="M54,54 m-45,0 a45,45 0 1,0 90,0 a45,45 0 1,0 -90,0" />
+</vector>
+"""
+
+# الأمامية: نجمة ثمانية سيريانية بخطوط ذهبية حادة
+icon_foreground = """<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- النجمة الثمانية (رمز سيرياني قديم) -->
+    <path
+        android:fillColor="#FFC107"
+        android:pathData="M54,14 L61,40 L88,40 L66,56 L74,82 L54,68 L34,82 L42,56 L20,40 L47,40 Z" />
+        
+    <!-- عين في الوسط (لإضافة الغموض) -->
+    <path
+        android:fillColor="#212121"
+        android:pathData="M54,48 C58,48 61,51 61,55 C61,59 58,62 54,62 C50,62 47,59 47,55 C47,51 50,48 54,48 Z" />
+        
+    <!-- خطوط إشعاعية -->
+    <path
+        android:strokeColor="#FFC107"
+        android:strokeWidth="1"
+        android:pathData="M54,14 L54,8 M54,94 L54,100 M14,54 L8,54 M94,54 L100,54" />
+</vector>
+"""
+
+# ==========================================
+# 2. تحديث MainActivity (نظام السيرفرات البديلة)
+# ==========================================
+main_activity_code = """package org.alituama.mytube
 
 import android.Manifest
 import android.animation.ArgbEvaluator
@@ -228,3 +289,21 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 }
+"""
+
+if __name__ == "__main__":
+    # تحديث الأيقونات
+    create_file("app/src/main/res/drawable/ic_launcher_background.xml", icon_background)
+    create_file("app/src/main/res/drawable/ic_launcher_foreground.xml", icon_foreground)
+    
+    # تحديث الكود
+    create_file("app/src/main/java/org/alituama/mytube/MainActivity.kt", main_activity_code)
+    
+    print("\n🚀 Pushing Mysterious Star Update & Server Bypass...")
+    try:
+        subprocess.run(["git", "add", "."], check=True)
+        subprocess.run(["git", "commit", "-m", "UI: Mysterious Syriac Star + Logic: Multi-Server Bypass"], check=True)
+        subprocess.run(["git", "push"], check=True)
+        print("✅ Done! Check the new icon and logic.")
+    except Exception as e:
+        print(f"❌ Git Error: {e}")
