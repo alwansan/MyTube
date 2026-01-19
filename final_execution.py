@@ -1,4 +1,96 @@
-package org.alituama.mytube
+import os
+import shutil
+import subprocess
+
+# ==========================================
+# 🛠️ الأدوات المساعدة
+# ==========================================
+def create_file(path, content):
+    directory = os.path.dirname(path)
+    if directory and not os.path.exists(directory):
+        os.makedirs(directory)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content.strip())
+    print(f"✅ Created: {path}")
+
+def clean_structure():
+    # تنظيف شامل لضمان عدم بقاء كود قديم
+    paths = [
+        "app/src/main/java/org/alituama/mytube/core",
+        "app/src/main/java/org/alituama/mytube/utils",
+        "app/src/main/java/org/alituama/mytube/strategy",
+        "app/src/main/java/org/alituama/mytube/ui"
+    ]
+    for p in paths:
+        if os.path.exists(p): shutil.rmtree(p)
+    print("🧹 Workspace cleaned.")
+
+# ==========================================
+# 1. Gradle (إجبار النظام على استخدام أحدث الأدوات)
+# ==========================================
+build_gradle_content = """
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+}
+
+android {
+    namespace = "org.alituama.mytube"
+    compileSdk = 34
+
+    defaultConfig {
+        applicationId = "org.alituama.mytube"
+        minSdk = 24
+        targetSdk = 34
+        versionCode = 8
+        versionName = "8.0"
+        
+        ndk {
+            abiFilters.add("armeabi-v7a")
+            abiFilters.add("arm64-v8a")
+            abiFilters.add("x86")
+            abiFilters.add("x86_64")
+        }
+    }
+
+    packaging {
+        jniLibs { useLegacyPackaging = true }
+        resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+    kotlinOptions { jvmTarget = "1.8" }
+    buildFeatures { viewBinding = true }
+}
+
+dependencies {
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.google.android.material:material:1.11.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    
+    // المكتبة المحدثة (JunkFood02 Fork)
+    implementation("io.github.junkfood02.youtubedl-android:library:0.17.2")
+    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.17.2") 
+    
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+}
+"""
+
+# ==========================================
+# 2. MainActivity (المنطق الجديد كلياً)
+# ==========================================
+main_activity_code = """package org.alituama.mytube
 
 import android.Manifest
 import android.animation.ArgbEvaluator
@@ -198,3 +290,20 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 }
+"""
+
+# ==========================================
+# تنفيذ العملية والرفع
+# ==========================================
+clean_structure()
+create_file("app/build.gradle.kts", build_gradle_content)
+create_file("app/src/main/java/org/alituama/mytube/MainActivity.kt", main_activity_code)
+
+print("\n🚀 Pushing Final Native-App Spoofing Fix...")
+try:
+    subprocess.run(["git", "add", "."], check=True)
+    subprocess.run(["git", "commit", "-m", "Final Fix: Impersonate Official YouTube App (No JS required)"], check=True)
+    subprocess.run(["git", "push"], check=True)
+    print("✅ Done! Check GitHub Actions.")
+except Exception as e:
+    print(f"❌ Git Error: {e}")
