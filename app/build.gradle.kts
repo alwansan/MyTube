@@ -14,7 +14,6 @@ android {
         versionCode = 1
         versionName = "1.0"
         
-        // إجبار النظام على دعم كل المعالجات
         ndk {
             abiFilters.add("armeabi-v7a")
             abiFilters.add("arm64-v8a")
@@ -23,7 +22,6 @@ android {
         }
     }
 
-    // الخلطة السحرية: منع ضغط ملفات المكتبة لتتمكن من العمل
     packaging {
         jniLibs {
             useLegacyPackaging = true
@@ -57,7 +55,7 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     
-    // استخدام النسخة الموثوقة 0.17.2
+    // المكتبة الأساسية
     implementation("io.github.junkfood02.youtubedl-android:library:0.17.2")
     implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.17.2") 
     
