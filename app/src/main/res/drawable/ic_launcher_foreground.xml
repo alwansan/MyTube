@@ -4,13 +4,19 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    
+    <!-- الإطار الزخرفي الذهبي -->
     <path
-        android:fillColor="#CFD8DC"
-        android:pathData="M54,19c-19.33,0 -35,15.67 -35,35 0,19.33 15.67,35 35,35s35,-15.67 35,-35c0,-19.33 -15.67,-35 -35,-35zM54,82c-15.46,0 -28,-12.54 -28,-28 0,-15.46 12.54,-28 28,-28s28,12.54 28,28c0,15.46 -12.54,28 -28,28z" />
+        android:fillColor="#D4AF37"
+        android:pathData="M54,24 L60,34 L70,34 L62,42 L65,52 L54,46 L43,52 L46,42 L38,34 L48,34 Z" />
+        
+    <!-- رمز التشغيل في الوسط (أبيض نقي) -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,39l-13,13h8v14h10v-14h8z" />
+        android:pathData="M48,38 L64,48 L48,58 Z" />
+        
+    <!-- خطوط هندسية سفلية -->
     <path
-        android:fillColor="#B0BEC5"
-        android:pathData="M41,68h26v4h-26z" />
+        android:fillColor="#C5A028"
+        android:pathData="M34,65 L74,65 L70,70 L38,70 Z M40,74 L68,74 L66,78 L42,78 Z" />
 </vector>

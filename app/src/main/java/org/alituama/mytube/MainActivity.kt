@@ -13,6 +13,8 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
 import android.widget.Button
@@ -39,10 +41,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvStatus: TextView
     private lateinit var etUrl: TextInputEditText
     private lateinit var tvCredits: TextView
+    private var isProcessing = false
+    private var lastProcessedUrl = ""
     
     private val client = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
+        .connectTimeout(60, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
         .build()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,19 +61,23 @@ class MainActivity : AppCompatActivity() {
         startAnimations()
         checkPermissions()
 
+        // 🟢 الإصلاح 1: مراقب النص الذكي (يعمل فوراً عند اللصق)
         etUrl.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: Editable?) {
                 val url = s.toString().trim()
-                if (url.startsWith("http") && url.length > 15 && tvStatus.text == "Ready") {
+                // الشرط المخفف: رابط يحتوي على http ولم يتم معالجته للتو
+                if (url.length > 10 && (url.contains("http") || url.contains("youtu")) && url != lastProcessedUrl) {
                     processWithApi(url)
                 }
             }
         })
 
         if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
-            intent.getStringExtra(Intent.EXTRA_TEXT)?.let { etUrl.setText(it) }
+            intent.getStringExtra(Intent.EXTRA_TEXT)?.let { 
+                etUrl.setText(it) // سيقوم المراقب أعلاه بتشغيل التنزيل تلقائياً
+            }
         }
 
         btnFetch.setOnClickListener {
@@ -82,20 +90,21 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun processWithApi(url: String) {
+        if (isProcessing) return
+        
+        isProcessing = true
+        lastProcessedUrl = url // منع التكرار
         tvStatus.setTextColor(Color.LTGRAY)
-        tvStatus.text = "Connecting..."
+        tvStatus.text = "Processing..."
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                // 🟢 استخدام سيرفر API مستقر
-                val apiUrl = "https://api.cobalt.tools"
+                val apiUrl = "https://api.cobalt.tools/api/json" // الرجوع لنقطة النهاية المستقرة
                 
                 val jsonBody = JSONObject()
                 jsonBody.put("url", url)
-                // الإعدادات القياسية لـ Cobalt
-                jsonBody.put("videoQuality", "720") // جودة آمنة ومضمونة
-                jsonBody.put("audioFormat", "mp3")
-                jsonBody.put("filenameStyle", "classic")
+                jsonBody.put("vQuality", "720") // 720 هو الأكثر استقراراً حالياً
+                jsonBody.put("filenamePattern", "basic")
 
                 val request = Request.Builder()
                     .url(apiUrl)
@@ -112,29 +121,33 @@ class MainActivity : AppCompatActivity() {
                     val json = JSONObject(responseStr)
                     val status = json.optString("status")
                     
-                    // حالات النجاح المختلفة
-                    if (status == "stream" || status == "redirect" || status == "tunnel") {
+                    if (status == "stream" || status == "redirect" || status == "tunnel" || json.has("url")) {
                         val downloadUrl = json.optString("url")
                         withContext(Dispatchers.Main) { startSystemDownload(downloadUrl) }
-                    } 
-                    else if (status == "picker") {
-                        // إذا أرجع قائمة، نأخذ الأول
+                    } else if (status == "picker") {
                         val picker = json.optJSONArray("picker")
                         if (picker != null && picker.length() > 0) {
                             val firstUrl = picker.getJSONObject(0).optString("url")
                             withContext(Dispatchers.Main) { startSystemDownload(firstUrl) }
                         }
-                    }
-                    else if (status == "error") {
-                        // قراءة الخطأ القادم من السيرفر
-                        val text = json.optString("text", "Unknown Error")
-                        throw Exception(text)
+                    } else {
+                        // محاولة قراءة النص
+                        val errText = json.optString("text")
+                        throw Exception(if (errText.isNotEmpty()) errText else "API Status: $status")
                     }
                 } else {
-                    // قراءة تفاصيل الفشل (400/500)
+                    // 🟢 الإصلاح 2: استخراج نص الخطأ الحقيقي بدقة
                     val errorMsg = try {
                         val errJson = JSONObject(responseStr ?: "{}")
-                        errJson.optString("text") ?: "Code: ${response.code}"
+                        // Cobalt يرسل الخطأ أحياناً في "text" وأحياناً في "error.code"
+                        val textErr = errJson.optString("text")
+                        val codeErr = errJson.optJSONObject("error")?.optString("code")
+                        
+                        when {
+                            textErr.isNotEmpty() -> textErr
+                            !codeErr.isNullOrEmpty() -> "Code: $codeErr"
+                            else -> "Server returned ${response.code}"
+                        }
                     } catch (e: Exception) {
                         "HTTP Error ${response.code}"
                     }
@@ -143,6 +156,8 @@ class MainActivity : AppCompatActivity() {
 
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
+                    isProcessing = false
+                    lastProcessedUrl = "" // السماح بالمحاولة مرة أخرى
                     tvStatus.setTextColor(Color.RED)
                     tvStatus.text = "Error"
                     showError("API Says: ${e.message}")
@@ -155,7 +170,8 @@ class MainActivity : AppCompatActivity() {
         try {
             tvStatus.text = "Downloading..."
             val request = DownloadManager.Request(Uri.parse(url))
-            request.setTitle("MyTube Video")
+            request.setTitle("MyTube Download")
+            request.setDescription("Downloading content...")
             request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
             request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "MyTube/video_${System.currentTimeMillis()}.mp4")
             
@@ -164,18 +180,28 @@ class MainActivity : AppCompatActivity() {
 
             tvStatus.setTextColor(Color.GREEN)
             tvStatus.text = "✅ Started"
-            Toast.makeText(this, "Check Notifications!", Toast.LENGTH_LONG).show()
-            etUrl.text?.clear()
-            etUrl.postDelayed({ tvStatus.text = "Ready" }, 3000)
+            Toast.makeText(this, "Started! Check Notifications.", Toast.LENGTH_LONG).show()
+            
+            // إعادة تعيين الحالة بعد فترة قصيرة
+            Handler(Looper.getMainLooper()).postDelayed({ 
+                tvStatus.text = "Ready"
+                etUrl.text?.clear()
+                isProcessing = false
+                lastProcessedUrl = ""
+            }, 3000)
 
         } catch (e: Exception) {
+            isProcessing = false
             showError("System Error: ${e.message}")
         }
     }
 
     private fun startAnimations() {
         val colorAnim = ObjectAnimator.ofInt(tvCredits, "textColor",
-            Color.GRAY, Color.WHITE, Color.LTGRAY, Color.GRAY)
+            Color.parseColor("#FFD700"), // ذهبي
+            Color.WHITE, 
+            Color.parseColor("#C0C0C0"), // فضي
+            Color.parseColor("#FFD700"))
         colorAnim.setDuration(4000)
         colorAnim.setEvaluator(ArgbEvaluator())
         colorAnim.repeatCount = ObjectAnimator.INFINITE
