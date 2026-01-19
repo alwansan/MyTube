@@ -1,4 +1,17 @@
-package org.alituama.mytube
+import os
+
+# ==========================================
+# دالة الحفظ
+# ==========================================
+def create_file(path, content):
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content.strip())
+    print(f"✅ Updated: {path}")
+
+# ==========================================
+# MainActivity.kt (تصحيح الطلب + قراءة الخطأ)
+# ==========================================
+main_activity_code = """package org.alituama.mytube
 
 import android.Manifest
 import android.animation.ArgbEvaluator
@@ -222,3 +235,17 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 }
+"""
+
+if __name__ == "__main__":
+    create_file("app/src/main/java/org/alituama/mytube/MainActivity.kt", main_activity_code)
+    
+    print("\n🚀 Pushing API Request Fixes...")
+    import subprocess
+    try:
+        subprocess.run(["git", "add", "."], check=True)
+        subprocess.run(["git", "commit", "-m", "Fix API 400 Error: Update User-Agent and JSON Payload"], check=True)
+        subprocess.run(["git", "push"], check=True)
+        print("✅ Done! This will fix the 400 error.")
+    except Exception as e:
+        print(f"❌ Git Error: {e}")
