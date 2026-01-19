@@ -1,4 +1,7 @@
-name: Build Android APK
+import os
+
+# محتوى ملف البناء المضمون
+workflow_content = """name: Build Android APK
 
 on:
   push:
@@ -34,3 +37,10 @@ jobs:
       with:
         name: MyTube-APK
         path: app/build/outputs/apk/debug/app-debug.apk
+"""
+
+# كتابة الملف
+with open(".github/workflows/build.yml", "w") as f:
+    f.write(workflow_content)
+
+print("✅ تم تحديث ملف البناء ليعمل بدون ملفات wrapper!")
