@@ -1,4 +1,82 @@
-package org.alituama.mytube
+import os
+import shutil
+import subprocess
+
+# ==========================================
+# 🛠️ أدوات النظام
+# ==========================================
+def create_file(path, content):
+    directory = os.path.dirname(path)
+    if directory and not os.path.exists(directory):
+        os.makedirs(directory)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content.strip())
+    print(f"✅ Created: {path}")
+
+def clean_heavy_libs():
+    # حذف المكتبات الثقيلة والملفات القديمة المسببة للمشاكل
+    paths = [
+        "app/src/main/java/org/alituama/mytube/core",
+        "app/src/main/java/org/alituama/mytube/utils",
+        "app/src/main/java/org/alituama/mytube/strategy",
+        "app/src/main/java/org/alituama/mytube/ui"
+    ]
+    for p in paths:
+        if os.path.exists(p): shutil.rmtree(p)
+    print("🧹 Cleaned old engines.")
+
+# ==========================================
+# 1. Gradle: خفيف جداً (API Mode)
+# ==========================================
+build_gradle_content = """
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+}
+
+android {
+    namespace = "org.alituama.mytube"
+    compileSdk = 34
+
+    defaultConfig {
+        applicationId = "org.alituama.mytube"
+        minSdk = 24
+        targetSdk = 34
+        versionCode = 10
+        versionName = "10.0"
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+    kotlinOptions { jvmTarget = "1.8" }
+    buildFeatures { viewBinding = true }
+}
+
+dependencies {
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.google.android.material:material:1.11.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    
+    // مكتبات الشبكة فقط (بدون yt-dlp)
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+}
+"""
+
+# ==========================================
+# 2. MainActivity: المحرك الجديد (Cobalt API)
+# ==========================================
+main_activity_code = """package org.alituama.mytube
 
 import android.Manifest
 import android.animation.ArgbEvaluator
@@ -212,3 +290,66 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 }
+"""
+
+# ==========================================
+# 3. AndroidManifest (تعديل بسيط)
+# ==========================================
+manifest_content = """<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@android:drawable/ic_menu_save"
+        android:label="MyTube"
+        android:requestLegacyExternalStorage="true"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.MyTube.Dialog"
+        android:usesCleartextTraffic="true" 
+        tools:targetApi="31">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.MyTube.Dialog">
+            
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
+"""
+
+# ==========================================
+# التنفيذ والرفع
+# ==========================================
+clean_heavy_libs()
+create_file("app/build.gradle.kts", build_gradle_content)
+create_file("app/src/main/java/org/alituama/mytube/MainActivity.kt", main_activity_code)
+create_file("app/src/main/AndroidManifest.xml", manifest_content)
+
+print("\n🚀 Pushing API-Based Solution (The Best Tool)...")
+try:
+    subprocess.run(["git", "add", "."], check=True)
+    subprocess.run(["git", "commit", "-m", "Switch to Cobalt API: No Bloatware, No Bot Errors"], check=True)
+    subprocess.run(["git", "push"], check=True)
+    print("✅ Done! This app will now be tiny and super fast.")
+except Exception as e:
+    print(f"❌ Git Error: {e}")
