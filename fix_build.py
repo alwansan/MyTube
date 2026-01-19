@@ -1,4 +1,7 @@
-name: Build Android APK
+import os
+
+# محتوى ملف البناء الجديد (المصحح)
+new_workflow = """name: Build Android APK
 
 on:
   push:
@@ -30,3 +33,11 @@ jobs:
       with:
         name: MyTube-APK
         path: app/build/outputs/apk/debug/app-debug.apk
+"""
+
+# كتابة الملف في مكانه الصحيح
+workflow_path = ".github/workflows/build.yml"
+with open(workflow_path, "w") as f:
+    f.write(new_workflow)
+
+print("✅ تم إصلاح ملف البناء بنجاح!")
