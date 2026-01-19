@@ -1,4 +1,95 @@
-package org.alituama.mytube
+import os
+import subprocess
+
+# ==========================================
+# دالة مساعدة
+# ==========================================
+def create_file(path, content):
+    directory = os.path.dirname(path)
+    if directory and not os.path.exists(directory):
+        os.makedirs(directory)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content.strip())
+    print(f"✅ Updated: {path}")
+
+# ==========================================
+# 1. تحديث build.gradle.kts (إجبار تضمين الملفات)
+# ==========================================
+# التغيير المهم: إضافة ndk abiFilters و isUniversalApk
+# هذا يجعل الـ APK كبيراً قليلاً لكنه يحتوي على كل شيء ولا يحتاج للإنترنت
+build_gradle_content = """
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+}
+
+android {
+    namespace = "org.alituama.mytube"
+    compileSdk = 34
+
+    defaultConfig {
+        applicationId = "org.alituama.mytube"
+        minSdk = 24
+        targetSdk = 34
+        versionCode = 1
+        versionName = "1.0"
+        
+        // 🔴 هام جداً: إجبار Gradle على تضمين ملفات التشغيل لكل المعالجات
+        ndk {
+            abiFilters.add("armeabi-v7a")
+            abiFilters.add("arm64-v8a")
+            abiFilters.add("x86")
+            abiFilters.add("x86_64")
+        }
+    }
+
+    // منع تقسيم الـ APK لضمان وجود كل الملفات في ملف واحد
+    splits {
+        abi {
+            isEnable = false
+            reset()
+            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+            isUniversalApk = true
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+    buildFeatures {
+        viewBinding = true
+    }
+}
+
+dependencies {
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.google.android.material:material:1.11.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    
+    // هذه المكتبات تحتوي على الملفات المدمجة (Offline Bundle)
+    implementation("io.github.junkfood02.youtubedl-android:library:0.17.2")
+    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.17.2") 
+    
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+}
+"""
+
+# ==========================================
+# 2. تحديث MainActivity.kt (إظهار الخطأ الحقيقي)
+# ==========================================
+kotlin_content = """package org.alituama.mytube
 
 import android.Manifest
 import android.animation.ArgbEvaluator
@@ -82,7 +173,7 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     tvStatus.text = "Error: Library Init Failed"
-                    showErrorDialog("Failed to extract built-in files.\nError: ${e.message}\nMake sure the APK includes native libs.")
+                    showErrorDialog("Failed to extract built-in files.\\nError: ${e.message}\\nMake sure the APK includes native libs.")
                 }
             }
         }
@@ -125,7 +216,7 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     tvStatus.text = "Failed"
-                    showErrorDialog("Download Error:\n${e.message}")
+                    showErrorDialog("Download Error:\\n${e.message}")
                 }
             }
         }
@@ -154,3 +245,17 @@ class MainActivity : AppCompatActivity() {
         colorAnim.start()
     }
 }
+"""
+
+if __name__ == "__main__":
+    create_file("app/build.gradle.kts", build_gradle_content)
+    create_file("app/src/main/java/org/alituama/mytube/MainActivity.kt", kotlin_content)
+    
+    print("\n🚀 Pushing Offline-Ready Update...")
+    try:
+        subprocess.run(["git", "add", "."], check=True)
+        subprocess.run(["git", "commit", "-m", "Force Universal APK (Offline Ready)"], check=True)
+        subprocess.run(["git", "push"], check=True)
+        print("✅ Done! The new APK will be larger but will include ALL necessary files.")
+    except Exception as e:
+        print(f"❌ Git Error: {e}")

@@ -13,6 +13,24 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
+        
+        // 🔴 هام جداً: إجبار Gradle على تضمين ملفات التشغيل لكل المعالجات
+        ndk {
+            abiFilters.add("armeabi-v7a")
+            abiFilters.add("arm64-v8a")
+            abiFilters.add("x86")
+            abiFilters.add("x86_64")
+        }
+    }
+
+    // منع تقسيم الـ APK لضمان وجود كل الملفات في ملف واحد
+    splits {
+        abi {
+            isEnable = false
+            reset()
+            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+            isUniversalApk = true
+        }
     }
 
     buildTypes {
@@ -39,9 +57,9 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     
-    // استخدام النسخة المستقرة
+    // هذه المكتبات تحتوي على الملفات المدمجة (Offline Bundle)
     implementation("io.github.junkfood02.youtubedl-android:library:0.17.2")
-    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.17.2")
+    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.17.2") 
     
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
