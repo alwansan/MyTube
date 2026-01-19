@@ -4,23 +4,14 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    
-    <!-- جسم السهم المجوف (Stroke Only) -->
     <path
-        android:strokeWidth="2.5"
-        android:strokeColor="#FFC107"
+        android:strokeWidth="3"
+        android:strokeColor="#FFD700"
         android:fillColor="#00000000"
-        android:strokeLineJoin="miter"
+        android:strokeLineJoin="round"
+        android:strokeLineCap="round"
         android:pathData="M38,45 L38,15 L70,15 L70,45 L88,45 L54,85 L20,45 Z" />
-        
-    <!-- عين غامضة داخل السهم -->
     <path
-        android:fillColor="#FFC107"
+        android:fillColor="#FFD700"
         android:pathData="M54,35 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
-        
-    <!-- زخارف سيريانية جانبية -->
-    <path
-        android:strokeWidth="1"
-        android:strokeColor="#C5A028"
-        android:pathData="M15,54 L25,54 M83,54 L93,54" />
 </vector>
