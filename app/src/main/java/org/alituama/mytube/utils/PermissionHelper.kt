@@ -8,25 +8,14 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
 object PermissionHelper {
-    private const val REQ_CODE = 100
-
     fun checkAndRequest(activity: Activity) {
-        val permissions = mutableListOf<String>()
-        
-        if (Build.VERSION.SDK_INT >= 33) {
-            if (ContextCompat.checkSelfPermission(activity, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                permissions.add(Manifest.permission.POST_NOTIFICATIONS)
-            }
+        val perms = mutableListOf<String>()
+        if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(activity, Manifest.permission.POST_NOTIFICATIONS) != 0) {
+            perms.add(Manifest.permission.POST_NOTIFICATIONS)
         }
-        
-        if (Build.VERSION.SDK_INT <= 29) {
-            if (ContextCompat.checkSelfPermission(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-            }
+        if (Build.VERSION.SDK_INT <= 29 && ContextCompat.checkSelfPermission(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE) != 0) {
+            perms.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
         }
-
-        if (permissions.isNotEmpty()) {
-            ActivityCompat.requestPermissions(activity, permissions.toTypedArray(), REQ_CODE)
-        }
+        if (perms.isNotEmpty()) ActivityCompat.requestPermissions(activity, perms.toTypedArray(), 100)
     }
 }
