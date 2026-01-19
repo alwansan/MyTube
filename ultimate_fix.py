@@ -1,4 +1,140 @@
-package org.alituama.mytube
+import os
+import subprocess
+
+# ==========================================
+# دالة مساعدة لإنشاء الملفات
+# ==========================================
+def create_file(path, content):
+    directory = os.path.dirname(path)
+    if directory and not os.path.exists(directory):
+        os.makedirs(directory)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content.strip())
+    print(f"✅ Updated: {path}")
+
+# ==========================================
+# 1. إصلاح Gradle (الحل الجذري لمشكلة Init)
+# ==========================================
+# التغيير الجوهري: إضافة packaging { jniLibs { useLegacyPackaging = true } }
+# هذا يمنع ضغط ملفات النظام ويسمح للمكتبة باستخراجها بنجاح
+build_gradle_content = """
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+}
+
+android {
+    namespace = "org.alituama.mytube"
+    compileSdk = 34
+
+    defaultConfig {
+        applicationId = "org.alituama.mytube"
+        minSdk = 24
+        targetSdk = 34
+        versionCode = 1
+        versionName = "1.0"
+        
+        // إجبار النظام على دعم كل المعالجات
+        ndk {
+            abiFilters.add("armeabi-v7a")
+            abiFilters.add("arm64-v8a")
+            abiFilters.add("x86")
+            abiFilters.add("x86_64")
+        }
+    }
+
+    // الخلطة السحرية: منع ضغط ملفات المكتبة لتتمكن من العمل
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+    buildFeatures {
+        viewBinding = true
+    }
+}
+
+dependencies {
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.google.android.material:material:1.11.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    
+    // استخدام النسخة الموثوقة 0.17.2
+    implementation("io.github.junkfood02.youtubedl-android:library:0.17.2")
+    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.17.2") 
+    
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+}
+"""
+
+# ==========================================
+# 2. تحديث AndroidManifest (ضمان التصريح)
+# ==========================================
+manifest_content = """<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- تصريحات الإنترنت والتخزين -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@android:drawable/ic_menu_save"
+        android:label="MyTube"
+        android:requestLegacyExternalStorage="true"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.MyTube.Dialog"
+        tools:targetApi="31">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.MyTube.Dialog">
+            
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
+"""
+
+# ==========================================
+# 3. تحديث MainActivity (طلب الصلاحيات + التهيئة)
+# ==========================================
+kotlin_content = """package org.alituama.mytube
 
 import android.Manifest
 import android.animation.ArgbEvaluator
@@ -112,7 +248,7 @@ class MainActivity : AppCompatActivity() {
                 Log.e("MyTube", "Init failed", e)
                 withContext(Dispatchers.Main) {
                     tvStatus.text = "Init Error: ${e.message}"
-                    showErrorDialog("Critical Error: Failed to load native libraries.\nError: ${e.message}")
+                    showErrorDialog("Critical Error: Failed to load native libraries.\\nError: ${e.message}")
                 }
             }
         }
@@ -144,7 +280,7 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     tvStatus.text = "Failed"
-                    showErrorDialog("Download Error:\n${e.message}")
+                    showErrorDialog("Download Error:\\n${e.message}")
                 }
             }
         }
@@ -168,3 +304,18 @@ class MainActivity : AppCompatActivity() {
         colorAnim.start()
     }
 }
+"""
+
+if __name__ == "__main__":
+    create_file("app/build.gradle.kts", build_gradle_content)
+    create_file("app/src/main/AndroidManifest.xml", manifest_content)
+    create_file("app/src/main/java/org/alituama/mytube/MainActivity.kt", kotlin_content)
+    
+    print("\n🚀 Pushing Ultimate Fix to GitHub...")
+    try:
+        subprocess.run(["git", "add", "."], check=True)
+        subprocess.run(["git", "commit", "-m", "Ultimate Fix: Legacy Packaging & Permissions"], check=True)
+        subprocess.run(["git", "push"], check=True)
+        print("✅ Done! This APK should work perfectly.")
+    except Exception as e:
+        print(f"❌ Git Error: {e}")

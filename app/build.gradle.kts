@@ -14,7 +14,7 @@ android {
         versionCode = 1
         versionName = "1.0"
         
-        // 🔴 هام جداً: إجبار Gradle على تضمين ملفات التشغيل لكل المعالجات
+        // إجبار النظام على دعم كل المعالجات
         ndk {
             abiFilters.add("armeabi-v7a")
             abiFilters.add("arm64-v8a")
@@ -23,13 +23,13 @@ android {
         }
     }
 
-    // منع تقسيم الـ APK لضمان وجود كل الملفات في ملف واحد
-    splits {
-        abi {
-            isEnable = false
-            reset()
-            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
-            isUniversalApk = true
+    // الخلطة السحرية: منع ضغط ملفات المكتبة لتتمكن من العمل
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
 
@@ -57,7 +57,7 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     
-    // هذه المكتبات تحتوي على الملفات المدمجة (Offline Bundle)
+    // استخدام النسخة الموثوقة 0.17.2
     implementation("io.github.junkfood02.youtubedl-android:library:0.17.2")
     implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.17.2") 
     

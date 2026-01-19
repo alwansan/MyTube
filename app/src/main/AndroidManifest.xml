@@ -2,7 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- تصريحات الإنترنت والتخزين -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -13,11 +15,11 @@
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@android:drawable/ic_menu_save"
         android:label="MyTube"
+        android:requestLegacyExternalStorage="true"
         android:supportsRtl="true"
         android:theme="@style/Theme.MyTube.Dialog"
         tools:targetApi="31">
 
-        <!-- النشاط الرئيسي (نافذة عائمة + يقبل المشاركة) -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -28,7 +30,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- هنا السر: استقبال الروابط من يوتيوب -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
