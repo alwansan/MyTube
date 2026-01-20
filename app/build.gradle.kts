@@ -11,8 +11,8 @@ android {
         applicationId = "org.alituama.mytube"
         minSdk = 24
         targetSdk = 34
-        versionCode = 17
-        versionName = "17.0"
+        versionCode = 18
+        versionName = "18.0"
         
         ndk {
             abiFilters.add("armeabi-v7a")
@@ -23,12 +23,8 @@ android {
     }
 
     packaging {
-        jniLibs {
-            useLegacyPackaging = true 
-        }
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-        }
+        jniLibs { useLegacyPackaging = true }
+        resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
     }
 
     buildTypes {
@@ -51,11 +47,11 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     
-    // المحرك الأساسي
+    // محرك التحميل
     implementation("io.github.junkfood02.youtubedl-android:library:0.17.2")
     implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.17.2") 
     
-    // مكتبة QuickJS لحل مشكلة الجافا سكربت (الحل السحري)
+    // 🟢 QuickJS: هذا هو المحرك الذي سيحل مشكلة JS Runtime Missing
     implementation("app.cash.quickjs:quickjs-android:0.9.2")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")

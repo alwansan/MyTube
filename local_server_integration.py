@@ -1,4 +1,125 @@
-package org.alituama.mytube
+import os
+import shutil
+import subprocess
+
+def create_file(path, content):
+    directory = os.path.dirname(path)
+    if directory and not os.path.exists(directory):
+        os.makedirs(directory)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content.strip())
+    print(f"✅ Created: {path}")
+
+def clean_structure():
+    paths = [
+        "app/src/main/java/org/alituama/mytube/core",
+        "app/src/main/java/org/alituama/mytube/utils",
+        "app/src/main/java/org/alituama/mytube/ui"
+    ]
+    for p in paths:
+        if os.path.exists(p): shutil.rmtree(p)
+    print("🧹 Logic Ported & Cleaned.")
+
+# ==========================================
+# 1. تصميم الأيقونة (سهم مجوف بدون نقطة)
+# ==========================================
+icon_background = """<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#0D0D0D"
+        android:pathData="M0,0h108v108h-108z" />
+</vector>
+"""
+
+icon_foreground = """<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:strokeWidth="4"
+        android:strokeColor="#FFD700"
+        android:fillColor="#00000000"
+        android:strokeLineJoin="round"
+        android:strokeLineCap="round"
+        android:pathData="M35,45 L35,15 L73,15 L73,45 L95,45 L54,90 L13,45 Z" />
+</vector>
+"""
+
+# ==========================================
+# 2. Gradle (إضافة QuickJS - الحل السحري)
+# ==========================================
+build_gradle_content = """
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+}
+
+android {
+    namespace = "org.alituama.mytube"
+    compileSdk = 34
+
+    defaultConfig {
+        applicationId = "org.alituama.mytube"
+        minSdk = 24
+        targetSdk = 34
+        versionCode = 18
+        versionName = "18.0"
+        
+        ndk {
+            abiFilters.add("armeabi-v7a")
+            abiFilters.add("arm64-v8a")
+            abiFilters.add("x86")
+            abiFilters.add("x86_64")
+        }
+    }
+
+    packaging {
+        jniLibs { useLegacyPackaging = true }
+        resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+    kotlinOptions { jvmTarget = "1.8" }
+    buildFeatures { viewBinding = true }
+}
+
+dependencies {
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.google.android.material:material:1.11.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    
+    // محرك التحميل
+    implementation("io.github.junkfood02.youtubedl-android:library:0.17.2")
+    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.17.2") 
+    
+    // 🟢 QuickJS: هذا هو المحرك الذي سيحل مشكلة JS Runtime Missing
+    implementation("app.cash.quickjs:quickjs-android:0.9.2")
+
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+}
+"""
+
+# ==========================================
+# 3. MainActivity (منطق البوت المترجم لـ Kotlin)
+# ==========================================
+main_activity_code = """package org.alituama.mytube
 
 import android.Manifest
 import android.animation.ArgbEvaluator
@@ -101,7 +222,7 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) { 
                     tvStatus.text = "Engine Error"
-                    showError("Bot Init Failed:\n${e.message}")
+                    showError("Bot Init Failed:\\n${e.message}")
                 }
             }
         }
@@ -165,7 +286,7 @@ class MainActivity : AppCompatActivity() {
                 withContext(Dispatchers.Main) {
                     tvStatus.setTextColor(Color.RED)
                     tvStatus.text = "Failed"
-                    showError("Bot Error:\n${e.message}")
+                    showError("Bot Error:\\n${e.message}")
                 }
             }
         }
@@ -207,3 +328,22 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 }
+"""
+
+if __name__ == "__main__":
+    clean_structure()
+    
+    # إنشاء الملفات
+    create_file("app/src/main/res/drawable/ic_launcher_background.xml", icon_background)
+    create_file("app/src/main/res/drawable/ic_launcher_foreground.xml", icon_foreground)
+    create_file("app/build.gradle.kts", build_gradle_content)
+    create_file("app/src/main/java/org/alituama/mytube/MainActivity.kt", main_activity_code)
+    
+    print("\n🚀 Pushing Local Telegram-Logic Integration...")
+    try:
+        subprocess.run(["git", "add", "."], check=True)
+        subprocess.run(["git", "commit", "-m", "Integration: Local Bot Engine + QuickJS Fix"], check=True)
+        subprocess.run(["git", "push"], check=True)
+        print("✅ Done! App now has the Brain of MegaBot.")
+    except Exception as e:
+        print(f"❌ Git Error: {e}")
