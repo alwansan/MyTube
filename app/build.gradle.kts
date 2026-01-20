@@ -11,8 +11,8 @@ android {
         applicationId = "org.alituama.mytube"
         minSdk = 24
         targetSdk = 34
-        versionCode = 30
-        versionName = "30.0"
+        versionCode = 22
+        versionName = "22.0"
     }
 
     buildTypes {
@@ -34,6 +34,5 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
-    // مكتبة المتصفح
     implementation("androidx.webkit:webkit:1.9.0")
 }
