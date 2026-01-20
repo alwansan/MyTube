@@ -1,4 +1,133 @@
-package org.alituama.mytube
+import os
+import shutil
+import subprocess
+
+def create_file(path, content):
+    directory = os.path.dirname(path)
+    if directory and not os.path.exists(directory):
+        os.makedirs(directory)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content.strip())
+    print(f"✅ Created: {path}")
+
+def clean_environment():
+    paths = [
+        "app/src/main/java/org/alituama/mytube/core",
+        "app/src/main/java/org/alituama/mytube/utils",
+        "app/src/main/java/org/alituama/mytube/ui"
+    ]
+    for p in paths:
+        if os.path.exists(p): shutil.rmtree(p)
+    print("🧹 Environment Cleaned.")
+
+# ==========================================
+# 1. تصميم الأيقونة (سهم مجوف نقي - بدون نقطة)
+# ==========================================
+icon_background = """<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#121212"
+        android:pathData="M0,0h108v108h-108z" />
+    <path
+        android:fillColor="#1A1A1A"
+        android:pathData="M0,54 L108,54 L108,108 L0,108 Z" />
+</vector>
+"""
+
+icon_foreground = """<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- السهم المجوف فقط (بدون أي شيء بداخله) -->
+    <path
+        android:strokeWidth="4"
+        android:strokeColor="#FFD700"
+        android:fillColor="#00000000"
+        android:strokeLineJoin="round"
+        android:strokeLineCap="round"
+        android:pathData="M35,45 L35,15 L73,15 L73,45 L95,45 L54,90 L13,45 Z" />
+        
+</vector>
+"""
+
+# ==========================================
+# 2. Gradle (إعداد بيئة السيرفر الكاملة)
+# ==========================================
+build_gradle_content = """
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+}
+
+android {
+    namespace = "org.alituama.mytube"
+    compileSdk = 34
+
+    defaultConfig {
+        applicationId = "org.alituama.mytube"
+        minSdk = 24
+        targetSdk = 34
+        versionCode = 16
+        versionName = "16.0"
+        
+        // دعم كامل لكل المعالجات (Server Environment)
+        ndk {
+            abiFilters.add("armeabi-v7a")
+            abiFilters.add("arm64-v8a")
+            abiFilters.add("x86")
+            abiFilters.add("x86_64")
+        }
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true // ضروري لاستخراج مكتبات Python
+        }
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false // ممنوع التصغير لضمان عمل الانعكاس (Reflection)
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+    kotlinOptions { jvmTarget = "1.8" }
+    buildFeatures { viewBinding = true }
+}
+
+dependencies {
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.google.android.material:material:1.11.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    
+    // محرك السيرفر المحلي (Python + FFmpeg Embedded)
+    implementation("io.github.junkfood02.youtubedl-android:library:0.17.2")
+    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.17.2") 
+    
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+}
+"""
+
+# ==========================================
+# 3. MainActivity (المحرك الداخلي المتكامل)
+# ==========================================
+main_activity_code = """package org.alituama.mytube
 
 import android.Manifest
 import android.animation.ArgbEvaluator
@@ -102,7 +231,7 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) { 
                     tvStatus.text = "Server Error"
-                    showError("Critical Engine Failure:\n${e.message}")
+                    showError("Critical Engine Failure:\\n${e.message}")
                 }
             }
         }
@@ -170,7 +299,7 @@ class MainActivity : AppCompatActivity() {
                     tvStatus.setTextColor(Color.RED)
                     tvStatus.text = "Failed"
                     // عرض رسالة الخطأ للمستخدم فقط في حال الفشل الذريع
-                    showError("Local Engine Error:\n${e.message}")
+                    showError("Local Engine Error:\\n${e.message}")
                 }
             }
         }
@@ -216,3 +345,22 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 }
+"""
+
+if __name__ == "__main__":
+    clean_environment()
+    
+    # إنشاء الملفات
+    create_file("app/src/main/res/drawable/ic_launcher_background.xml", icon_background)
+    create_file("app/src/main/res/drawable/ic_launcher_foreground.xml", icon_foreground)
+    create_file("app/build.gradle.kts", build_gradle_content)
+    create_file("app/src/main/java/org/alituama/mytube/MainActivity.kt", main_activity_code)
+    
+    print("\n🚀 Pushing Full Embedded Server Fix...")
+    try:
+        subprocess.run(["git", "add", "."], check=True)
+        subprocess.run(["git", "commit", "-m", "Final: Full Embedded Server + Android Client Spoof + New Icon"], check=True)
+        subprocess.run(["git", "push"], check=True)
+        print("✅ Done! The app is now a self-contained powerhouse.")
+    except Exception as e:
+        print(f"❌ Git Error: {e}")

@@ -11,10 +11,10 @@ android {
         applicationId = "org.alituama.mytube"
         minSdk = 24
         targetSdk = 34
-        versionCode = 15
-        versionName = "15.0"
+        versionCode = 16
+        versionName = "16.0"
         
-        // ضروري جداً لعمل المحرك المحلي على كل الهواتف
+        // دعم كامل لكل المعالجات (Server Environment)
         ndk {
             abiFilters.add("armeabi-v7a")
             abiFilters.add("arm64-v8a")
@@ -25,7 +25,7 @@ android {
 
     packaging {
         jniLibs {
-            useLegacyPackaging = true // يمنع ضغط ملفات السيرفر
+            useLegacyPackaging = true // ضروري لاستخراج مكتبات Python
         }
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -34,7 +34,7 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false // تعطيل التصغير لضمان عمل كود البايثون
+            isMinifyEnabled = false // ممنوع التصغير لضمان عمل الانعكاس (Reflection)
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
@@ -52,8 +52,7 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     
-    // محرك yt-dlp المدمج (السيرفر المحلي)
-    // نستخدم مكتبة junkfood02 لأنها تدعم بايثون 3.8+ المدمج
+    // محرك السيرفر المحلي (Python + FFmpeg Embedded)
     implementation("io.github.junkfood02.youtubedl-android:library:0.17.2")
     implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.17.2") 
     
