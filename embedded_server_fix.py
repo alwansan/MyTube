@@ -1,4 +1,133 @@
-package org.alituama.mytube
+import os
+import shutil
+import subprocess
+
+def create_file(path, content):
+    directory = os.path.dirname(path)
+    if directory and not os.path.exists(directory):
+        os.makedirs(directory)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content.strip())
+    print(f"✅ Created: {path}")
+
+def clean_old_files():
+    # تنظيف شامل لضمان عدم وجود بقايا من نظام API القديم
+    paths = [
+        "app/src/main/java/org/alituama/mytube/core",
+        "app/src/main/java/org/alituama/mytube/utils",
+        "app/src/main/java/org/alituama/mytube/strategy",
+        "app/src/main/java/org/alituama/mytube/ui"
+    ]
+    for p in paths:
+        if os.path.exists(p): shutil.rmtree(p)
+    print("🧹 Workspace cleaned for Local Server Mode.")
+
+# ==========================================
+# 1. تصميم الأيقونة (السهم السيرياني)
+# ==========================================
+icon_background = """<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#0D0D0D"
+        android:pathData="M0,0h108v108h-108z" />
+</vector>
+"""
+
+icon_foreground = """<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:strokeWidth="3"
+        android:strokeColor="#D4AF37"
+        android:fillColor="#00000000"
+        android:strokeLineJoin="round"
+        android:strokeLineCap="round"
+        android:pathData="M38,45 L38,15 L70,15 L70,45 L88,45 L54,85 L20,45 Z" />
+    <path
+        android:fillColor="#D4AF37"
+        android:pathData="M54,35 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
+</vector>
+"""
+
+# ==========================================
+# 2. Gradle (إعداد المحرك المحلي الثقيل)
+# ==========================================
+build_gradle_content = """
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+}
+
+android {
+    namespace = "org.alituama.mytube"
+    compileSdk = 34
+
+    defaultConfig {
+        applicationId = "org.alituama.mytube"
+        minSdk = 24
+        targetSdk = 34
+        versionCode = 15
+        versionName = "15.0"
+        
+        // ضروري جداً لعمل المحرك المحلي على كل الهواتف
+        ndk {
+            abiFilters.add("armeabi-v7a")
+            abiFilters.add("arm64-v8a")
+            abiFilters.add("x86")
+            abiFilters.add("x86_64")
+        }
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true // يمنع ضغط ملفات السيرفر
+        }
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false // تعطيل التصغير لضمان عمل كود البايثون
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+    kotlinOptions { jvmTarget = "1.8" }
+    buildFeatures { viewBinding = true }
+}
+
+dependencies {
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.google.android.material:material:1.11.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    
+    // محرك yt-dlp المدمج (السيرفر المحلي)
+    // نستخدم مكتبة junkfood02 لأنها تدعم بايثون 3.8+ المدمج
+    implementation("io.github.junkfood02.youtubedl-android:library:0.17.2")
+    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.17.2") 
+    
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+}
+"""
+
+# ==========================================
+# 3. MainActivity (مشغل السيرفر المحلي)
+# ==========================================
+main_activity_code = """package org.alituama.mytube
 
 import android.Manifest
 import android.animation.ArgbEvaluator
@@ -100,7 +229,7 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) { 
                     tvStatus.text = "Server Boot Failed"
-                    showError("Could not start local engine.\nReason: ${e.message}")
+                    showError("Could not start local engine.\\nReason: ${e.message}")
                 }
             }
         }
@@ -166,7 +295,7 @@ class MainActivity : AppCompatActivity() {
                 withContext(Dispatchers.Main) {
                     tvStatus.setTextColor(Color.RED)
                     tvStatus.text = "Failed"
-                    showError("Local Server Error:\n${e.message}")
+                    showError("Local Server Error:\\n${e.message}")
                 }
             }
         }
@@ -208,3 +337,22 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 }
+"""
+
+if __name__ == "__main__":
+    clean_old_files()
+    
+    # إنشاء الملفات
+    create_file("app/src/main/res/drawable/ic_launcher_background.xml", icon_background)
+    create_file("app/src/main/res/drawable/ic_launcher_foreground.xml", icon_foreground)
+    create_file("app/build.gradle.kts", build_gradle_content)
+    create_file("app/src/main/java/org/alituama/mytube/MainActivity.kt", main_activity_code)
+    
+    print("\n🚀 Pushing Embedded Server Solution...")
+    try:
+        subprocess.run(["git", "add", "."], check=True)
+        subprocess.run(["git", "commit", "-m", "Final Solution: Embedded Local Server (No API Dependency)"], check=True)
+        subprocess.run(["git", "push"], check=True)
+        print("✅ Done! App will now contain its own engine.")
+    except Exception as e:
+        print(f"❌ Git Error: {e}")
