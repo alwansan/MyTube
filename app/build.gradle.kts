@@ -11,8 +11,8 @@ android {
         applicationId = "org.alituama.mytube"
         minSdk = 24
         targetSdk = 34
-        versionCode = 22
-        versionName = "22.0"
+        versionCode = 30
+        versionName = "30.0"
     }
 
     buildTypes {

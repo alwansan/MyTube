@@ -4,7 +4,7 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- السهم المجوف النقي -->
+    <!-- سهم مجوف فقط -->
     <path
         android:strokeWidth="4"
         android:strokeColor="#FFD700"
