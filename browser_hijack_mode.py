@@ -1,4 +1,94 @@
-package org.alituama.mytube
+import os
+import shutil
+import subprocess
+
+def create_file(path, content):
+    directory = os.path.dirname(path)
+    if directory and not os.path.exists(directory):
+        os.makedirs(directory)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content.strip())
+    print(f"✅ Created: {path}")
+
+# ==========================================
+# 1. الأيقونة (سهم مجوف نقي - Minimalist)
+# ==========================================
+icon_background = """<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#121212"
+        android:pathData="M0,0h108v108h-108z" />
+</vector>
+"""
+
+icon_foreground = """<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- السهم المجوف النقي -->
+    <path
+        android:strokeWidth="4"
+        android:strokeColor="#FFD700"
+        android:fillColor="#00000000"
+        android:strokeLineJoin="round"
+        android:strokeLineCap="round"
+        android:pathData="M35,45 L35,15 L73,15 L73,45 L95,45 L54,90 L13,45 Z" />
+</vector>
+"""
+
+# ==========================================
+# 2. Gradle (لا نحتاج مكتبات خارجية - نستخدم النظام فقط)
+# ==========================================
+build_gradle_content = """
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+}
+
+android {
+    namespace = "org.alituama.mytube"
+    compileSdk = 34
+
+    defaultConfig {
+        applicationId = "org.alituama.mytube"
+        minSdk = 24
+        targetSdk = 34
+        versionCode = 20
+        versionName = "20.0"
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+    kotlinOptions { jvmTarget = "1.8" }
+    buildFeatures { viewBinding = true }
+}
+
+dependencies {
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.google.android.material:material:1.11.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+}
+"""
+
+# ==========================================
+# 3. MainActivity (المتصفح الخفي الذكي)
+# ==========================================
+main_activity_code = """package org.alituama.mytube
 
 import android.Manifest
 import android.animation.ArgbEvaluator
@@ -107,7 +197,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun injectExtractorScript() {
         // هذا الكود يبحث عن عنصر الفيديو في الصفحة ويستخرج الرابط
-        val script = """
+        val script = \"\"\"
             (function() {
                 var video = document.querySelector('video');
                 if (video && video.src) {
@@ -115,13 +205,13 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     // محاولة البحث عن روابط MP4 في الكود
                     var html = document.body.innerHTML;
-                    var match = html.match(/https:\/\/[^"']+\.mp4[^"']*/);
+                    var match = html.match(/https:\\/\\/[^"']+\\.mp4[^"']*/);
                     if (match) {
                         MyTubeExtractor.foundVideo(match[0]);
                     }
                 }
             })();
-        """
+        \"\"\"
         hiddenWebView.evaluateJavascript(script, null)
     }
 
@@ -194,3 +284,27 @@ class MainActivity : AppCompatActivity() {
         }
     }
 }
+"""
+
+if __name__ == "__main__":
+    # تنظيف
+    if os.path.exists("app/src/main/java/org/alituama/mytube/core"): shutil.rmtree("app/src/main/java/org/alituama/mytube/core")
+    
+    # 1. تحديث الأيقونة
+    create_file("app/src/main/res/drawable/ic_launcher_background.xml", icon_background)
+    create_file("app/src/main/res/drawable/ic_launcher_foreground.xml", icon_foreground)
+    
+    # 2. تحديث Gradle
+    create_file("app/build.gradle.kts", build_gradle_content)
+    
+    # 3. تحديث الكود
+    create_file("app/src/main/java/org/alituama/mytube/MainActivity.kt", main_activity_code)
+    
+    print("\n🚀 Pushing Browser Hijack Mode...")
+    try:
+        subprocess.run(["git", "add", "."], check=True)
+        subprocess.run(["git", "commit", "-m", "Final: Browser Hijack Mode (Snaptube Style)"], check=True)
+        subprocess.run(["git", "push"], check=True)
+        print("✅ Done! This uses a hidden browser to bypass everything.")
+    except Exception as e:
+        print(f"❌ Git Error: {e}")
