@@ -169,8 +169,9 @@ class MainActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val request = YoutubeDLRequest(url)
-                if (cookies.isNotEmpty()) request.addHeader("Cookie", cookies)
-                request.addHeader("User-Agent", userAgent)
+                // Fix: Replace addHeader with addOption due to library version diff
+                if (cookies.isNotEmpty()) request.addOption("--add-header", "Cookie:$cookies")
+                request.addOption("--add-header", "User-Agent:$userAgent")
                 
                 request.addOption("--no-playlist")
                 request.addOption("--no-check-certificate")
@@ -249,8 +250,9 @@ class MainActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val request = YoutubeDLRequest(url)
-                if (cookies.isNotEmpty()) request.addHeader("Cookie", cookies)
-                request.addHeader("User-Agent", userAgent)
+                // Fix: Replace addHeader with addOption
+                if (cookies.isNotEmpty()) request.addOption("--add-header", "Cookie:$cookies")
+                request.addOption("--add-header", "User-Agent:$userAgent")
                 
                 if (qualityLabel == "Audio Only") {
                      request.addOption("-f", "bestaudio/best")
@@ -264,8 +266,7 @@ class MainActivity : AppCompatActivity() {
                 request.addOption("--no-mtime")
                 request.addOption("--no-check-certificate")
                 
-                // CRITICAL FIX: Pass null, null to execute() to avoid Kotlin lambda type inference errors
-                // This sacrifices progress updates for build stability.
+                // Keep callback as null for safety
                 YoutubeDL.getInstance().execute(request, null, null)
 
                 withContext(Dispatchers.Main) {

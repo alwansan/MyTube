@@ -3,7 +3,7 @@ import os
 import shutil
 import subprocess
 
-# --- MYTUBE ARTIFACT RESTORATION & BUILD FIX ---
+# --- MYTUBE HEADER FIX (ARM64) ---
 
 def write_file(path, content):
     parent = os.path.dirname(path)
@@ -13,7 +13,7 @@ def write_file(path, content):
         f.write(content.strip())
     print(f"✅ Created: {path}")
 
-print("🛠️ Restoring Artifacts & Finalizing Build...")
+print("🛠️ Fixing Compilation Headers...")
 
 # 1. ROOT build.gradle.kts
 write_file("build.gradle.kts", """
@@ -46,7 +46,6 @@ include(":app")
 """)
 
 # 3. APP build.gradle.kts
-# FIX: Revert to Junkfood02 Artifacts (0.17.2) which are confirmed to exist
 write_file("app/build.gradle.kts", """
 plugins {
     id("com.android.application")
@@ -61,8 +60,8 @@ android {
         applicationId = "org.alituama.mytube"
         minSdk = 24
         targetSdk = 34
-        versionCode = 312
-        versionName = "3.7.0"
+        versionCode = 313
+        versionName = "3.8.0"
         
         ndk {
             abiFilters.add("arm64-v8a")
@@ -95,7 +94,6 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     
-    // FIX: Restoring Junkfood02 artifacts
     implementation("io.github.junkfood02.youtubedl-android:library:0.17.2")
     implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.17.2") 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
@@ -145,7 +143,7 @@ jobs:
         if-no-files-found: error
 """)
 
-# 6. MainActivity.kt (Safety Mode: No Callback)
+# 6. MainActivity.kt (Header Method Fix)
 write_file("app/src/main/java/org/alituama/mytube/MainActivity.kt", r"""
 
 package org.alituama.mytube
@@ -319,8 +317,9 @@ class MainActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val request = YoutubeDLRequest(url)
-                if (cookies.isNotEmpty()) request.addHeader("Cookie", cookies)
-                request.addHeader("User-Agent", userAgent)
+                // Fix: Replace addHeader with addOption due to library version diff
+                if (cookies.isNotEmpty()) request.addOption("--add-header", "Cookie:$cookies")
+                request.addOption("--add-header", "User-Agent:$userAgent")
                 
                 request.addOption("--no-playlist")
                 request.addOption("--no-check-certificate")
@@ -399,8 +398,9 @@ class MainActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val request = YoutubeDLRequest(url)
-                if (cookies.isNotEmpty()) request.addHeader("Cookie", cookies)
-                request.addHeader("User-Agent", userAgent)
+                // Fix: Replace addHeader with addOption
+                if (cookies.isNotEmpty()) request.addOption("--add-header", "Cookie:$cookies")
+                request.addOption("--add-header", "User-Agent:$userAgent")
                 
                 if (qualityLabel == "Audio Only") {
                      request.addOption("-f", "bestaudio/best")
@@ -414,8 +414,7 @@ class MainActivity : AppCompatActivity() {
                 request.addOption("--no-mtime")
                 request.addOption("--no-check-certificate")
                 
-                // CRITICAL FIX: Pass null, null to execute() to avoid Kotlin lambda type inference errors
-                // This sacrifices progress updates for build stability.
+                // Keep callback as null for safety
                 YoutubeDL.getInstance().execute(request, null, null)
 
                 withContext(Dispatchers.Main) {
@@ -563,11 +562,10 @@ write_file("app/src/main/res/layout/activity_main.xml", """
   
 """)
 
-# 8. Manifest
+# 8. Manifest (Cleaned)
 write_file("app/src/main/AndroidManifest.xml", """
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="org.alituama.mytube"
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
@@ -607,14 +605,14 @@ write_file("app/src/main/AndroidManifest.xml", """
 </manifest>
 """)
 
-print("🚀 Build Restoration Complete!")
+print("🚀 Header Logic Repaired!")
 
 # --- AUTO PUSH ---
 try:
     print("🔄 Pushing to GitHub...")
     subprocess.run(["git", "remote", "add", "origin", "https://github.com/alwansan/MyTube.git"], check=False, capture_output=True)
     subprocess.run(["git", "add", "."], check=True)
-    subprocess.run(["git", "commit", "-m", "Fix: Artifacts & Compilation"], check=True)
+    subprocess.run(["git", "commit", "-m", "Fix: Header Options & Manifest"], check=True)
     subprocess.run(["git", "push", "-u", "origin", "main"], check=True)
     print("✅ Uploaded successfully.")
 except Exception as e:
