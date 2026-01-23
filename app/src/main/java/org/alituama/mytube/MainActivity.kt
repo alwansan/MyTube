@@ -33,6 +33,7 @@ import com.yausername.youtubedl_android.YoutubeDLRequest
 import com.yausername.youtubedl_android.mapper.VideoInfo
 import kotlinx.coroutines.*
 import java.io.File
+import java.net.URI
 import org.alituama.mytube.R
 
 class MainActivity : AppCompatActivity() {
@@ -85,6 +86,7 @@ class MainActivity : AppCompatActivity() {
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
+            // Modern User-Agent to match typical Android Chrome behavior
             userAgentString = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         }
@@ -107,6 +109,7 @@ class MainActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 YoutubeDL.getInstance().init(applicationContext)
+                // Try update, but don't crash if fails
                 try {
                     YoutubeDL.getInstance().updateYoutubeDL(applicationContext, YoutubeDL.UpdateChannel.STABLE)
                 } catch (e: Exception) { e.printStackTrace() }
@@ -139,11 +142,13 @@ class MainActivity : AppCompatActivity() {
         tvStatus.setTextColor(Color.parseColor("#FFD700"))
         progressBar.visibility = View.VISIBLE
         
+        // Load in hidden webview to generate fresh cookies/tokens
         webView.loadUrl(url)
         
+        // Wait longer for JS execution and cookie settlement
         Handler(Looper.getMainLooper()).postDelayed({
             extractCookiesAndAnalyze(url)
-        }, 4000)
+        }, 5000)
     }
 
     private fun extractCookiesAndAnalyze(url: String) {
@@ -152,15 +157,50 @@ class MainActivity : AppCompatActivity() {
         val userAgent = webView.settings.userAgentString
         
         if (cookies.isEmpty()) {
-            tvStatus.text = "RETRYING BYPASS..."
+            tvStatus.text = "RETRYING SESSION..."
             Handler(Looper.getMainLooper()).postDelayed({ 
                  val retryCookies = CookieManager.getInstance().getCookie(url) ?: ""
                  performAnalysis(url, retryCookies, userAgent)
-            }, 2000)
+            }, 3000)
             return
         }
         
         performAnalysis(url, cookies, userAgent)
+    }
+
+    // Helper to write valid Netscape cookie file
+    private fun createNetscapeCookieFile(url: String, cookieString: String): File? {
+        return try {
+            val file = File(cacheDir, "cookies.txt")
+            if (file.exists()) file.delete()
+            
+            val domain = try { URI(url).host.replace("www.", ".") } catch(e: Exception) { ".youtube.com" }
+            
+            val writer = file.bufferedWriter()
+            writer.write("# Netscape HTTP Cookie File
+")
+            
+            cookieString.split(";").forEach { raw ->
+                val trimmed = raw.trim()
+                if (trimmed.isNotEmpty()) {
+                    val parts = trimmed.split("=", limit = 2)
+                    if (parts.size == 2) {
+                        val name = parts[0].trim()
+                        val value = parts[1].trim()
+                        // domain flag path secure expiry name value
+                        // We use a distant future expiry and assume HTTPS (secure=TRUE)
+                        writer.write("$domain	TRUE	/	TRUE	2147483647	$name	$value
+")
+                    }
+                }
+            }
+            writer.flush()
+            writer.close()
+            file
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
     }
 
     private fun performAnalysis(url: String, cookies: String, userAgent: String) {
@@ -169,15 +209,20 @@ class MainActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val request = YoutubeDLRequest(url)
-                // Fix: Replace addHeader with addOption due to library version diff
-                if (cookies.isNotEmpty()) request.addOption("--add-header", "Cookie:$cookies")
+                
+                // CRITICAL FIX: Use Netscape Cookie File instead of Header
+                val cookieFile = createNetscapeCookieFile(url, cookies)
+                if (cookieFile != null) {
+                    request.addOption("--cookies", cookieFile.absolutePath)
+                }
+                
+                // User-Agent must match strictly
                 request.addOption("--add-header", "User-Agent:$userAgent")
                 
                 request.addOption("--no-playlist")
                 request.addOption("--no-check-certificate")
                 request.addOption("--geo-bypass")
-                request.addOption("--extractor-args", "youtube:player_client=android") 
-
+                
                 val info: VideoInfo = YoutubeDL.getInstance().getInfo(request)
                 
                 withContext(Dispatchers.Main) {
@@ -192,7 +237,8 @@ class MainActivity : AppCompatActivity() {
                     isAnalysisRunning = false
                     tvStatus.text = "FAILED"
                     tvStatus.setTextColor(Color.RED)
-                    showErrorDialog("Analysis Failed: ${e.message}")
+                    showErrorDialog("Bot Check Failed. Try waiting a moment.
+Error: ${e.message}")
                 }
             }
         }
@@ -250,8 +296,13 @@ class MainActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val request = YoutubeDLRequest(url)
-                // Fix: Replace addHeader with addOption
-                if (cookies.isNotEmpty()) request.addOption("--add-header", "Cookie:$cookies")
+                
+                // CRITICAL FIX: Re-generate cookie file for download
+                val cookieFile = createNetscapeCookieFile(url, cookies)
+                if (cookieFile != null) {
+                    request.addOption("--cookies", cookieFile.absolutePath)
+                }
+
                 request.addOption("--add-header", "User-Agent:$userAgent")
                 
                 if (qualityLabel == "Audio Only") {
