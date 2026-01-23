@@ -1,3 +1,86 @@
+
+import os
+import shutil
+import subprocess
+
+# --- MYTUBE HEAVY ENGINE INSTALLER ---
+
+def write_file(path, content):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(content.strip())
+    print(f"✅ Created: {path}")
+
+print("🛠️ Installing Native yt-dlp Engine (Heavy Mode)...")
+
+# 1. Update build.gradle.kts (Add Native Libraries)
+# We use io.github.junkfood02:youtubedl-android as it is the active fork
+write_file("app/build.gradle.kts", """
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+}
+
+android {
+    namespace = "org.alituama.mytube"
+    compileSdk = 34
+
+    defaultConfig {
+        applicationId = "org.alituama.mytube"
+        minSdk = 24
+        targetSdk = 34
+        versionCode = 300
+        versionName = "3.0.0"
+        
+        // Define CPU Architectures for NDK
+        ndk {
+            abiFilters.add("armeabi-v7a")
+            abiFilters.add("arm64-v8a")
+            abiFilters.add("x86")
+            abiFilters.add("x86_64")
+        }
+    }
+    
+    // Split APKs per ABI to reduce install size (optional, but good for heavy libs)
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+            isUniversalApk = true
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+    kotlinOptions { jvmTarget = "1.8" }
+}
+
+dependencies {
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.google.android.material:material:1.11.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    
+    // Native yt-dlp wrapper (The Heavy Engine)
+    implementation("io.github.junkfood02.youtubedl-android:library:0.17.2")
+    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.17.2") 
+    
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
+}
+""")
+
+# 2. Update MainActivity.kt (Implement Native Engine)
+write_file("app/src/main/java/org/alituama/mytube/MainActivity.kt", """
+
 package org.alituama.mytube
 
 import android.Manifest
@@ -276,3 +359,68 @@ class MainActivity : AppCompatActivity() {
 
     data class VideoOption(val quality: String, val desc: String, val formatId: String)
 }
+  
+""")
+
+# 3. Ensure Permissions in Manifest
+write_file("app/src/main/AndroidManifest.xml", """
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="MyTube"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.MyTube"
+        android:usesCleartextTraffic="true"
+        tools:targetApi="31">
+        
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.MyTube"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
+""")
+
+print("🚀 Heavy Engine Integrated!")
+
+# --- GIT AUTO-UPLOAD ---
+try:
+    print("🔄 Pushing to GitHub...")
+    
+    subprocess.run(
+        ["git", "remote", "add", "origin", "https://github.com/alwansan/MyTube.git"],
+        check=False, capture_output=True
+    )
+
+    subprocess.run(["git", "add", "."], check=True)
+    subprocess.run(["git", "commit", "-m", "Nuclear Option: Integrated Native yt-dlp Engine"], check=True)
+    subprocess.run(["git", "push", "-u", "origin", "main"], check=True)
+
+    print("✅ Project uploaded to GitHub successfully.")
+
+except Exception as e:
+    print(f"❌ Git error: {e}")
+
