@@ -11,9 +11,10 @@ android {
         applicationId = "org.alituama.mytube"
         minSdk = 24
         targetSdk = 34
-        versionCode = 308
-        versionName = "3.3.0"
+        versionCode = 309
+        versionName = "3.4.0"
         
+        // EXCLUSIVE: ONLY ARM64-V8A to save space and fix splits
         ndk {
             abiFilters.add("arm64-v8a")
         }
@@ -26,6 +27,7 @@ android {
         }
     }
     
+    // CRITICAL: Prevent compression of native libs so they extract correctly on install
     packaging {
         jniLibs {
             useLegacyPackaging = true
@@ -45,6 +47,7 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     
+    // YoutubeDL-Android
     implementation("io.github.junkfood02.youtubedl-android:library:0.17.2")
     implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.17.2") 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")

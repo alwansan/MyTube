@@ -6,7 +6,6 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -17,7 +16,6 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
 import android.webkit.CookieManager
-import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -35,15 +33,17 @@ import com.yausername.youtubedl_android.YoutubeDLRequest
 import com.yausername.youtubedl_android.mapper.VideoInfo
 import kotlinx.coroutines.*
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var tvStatus: TextView
     private lateinit var etUrl: EditText
     private lateinit var progressBar: ProgressBar
-    private lateinit var webView: WebView // THE HIDDEN BROWSER
+    private lateinit var webView: WebView 
     private var lastUrl = ""
     private var isEngineReady = false
+    private val isAnalysisRunning = AtomicBoolean(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,8 +55,13 @@ class MainActivity : AppCompatActivity() {
         webView = findViewById(R.id.webView)
         val btnFetch = findViewById<Button>(R.id.btnFetch)
 
+        // 1. Setup the "Stealth Browser"
         setupHiddenBrowser()
+        
+        // 2. Permission Check
         checkPermissions()
+        
+        // 3. Boot Engine
         initEngine()
 
         etUrl.addTextChangedListener(object : TextWatcher {
@@ -64,7 +69,8 @@ class MainActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: Editable?) {
                 val url = s.toString().trim()
-                if (url.length > 10 && (url.contains("http") || url.contains("youtu")) && url != lastUrl) {
+                // Auto-trigger if it looks like a valid link and we aren't already busy
+                if (url.length > 10 && (url.contains("http") || url.contains("youtu")) && url != lastUrl && !isAnalysisRunning.get()) {
                     processUrl(url)
                 }
             }
@@ -86,6 +92,7 @@ class MainActivity : AppCompatActivity() {
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
+            // Spoof as a standard Android Chrome to blend in
             userAgentString = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         }
@@ -93,11 +100,11 @@ class MainActivity : AppCompatActivity() {
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                // Page loaded -> Cookies are ready
+                // Cookies are automatically stored in CookieManager
             }
         }
         
-        // Clear old sessions
+        // Clear old sessions for a fresh start
         CookieManager.getInstance().removeAllCookies(null)
         CookieManager.getInstance().flush()
     }
@@ -109,9 +116,10 @@ class MainActivity : AppCompatActivity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                // Initialize yt-dlp binary
                 YoutubeDL.getInstance().init(applicationContext)
                 
-                // Attempt update, but don't fail if offline
+                // Silent update attempt
                 try {
                     YoutubeDL.getInstance().updateYoutubeDL(applicationContext, YoutubeDL.UpdateChannel.STABLE)
                 } catch (e: Exception) { e.printStackTrace() }
@@ -135,65 +143,74 @@ class MainActivity : AppCompatActivity() {
     private fun processUrl(url: String) {
         if (!isEngineReady) {
             Toast.makeText(this, "Engine booting...", Toast.LENGTH_SHORT).show()
-            initEngine()
             return
         }
-
+        
+        isAnalysisRunning.set(true)
         lastUrl = url
         tvStatus.text = "BYPASSING BOT CHECK..."
         tvStatus.setTextColor(Color.parseColor("#FFD700")) // Gold
         progressBar.visibility = View.VISIBLE
         
-        // STEP 1: LOAD IN HIDDEN BROWSER TO GENERATE COOKIES
-        webView.visibility = View.INVISIBLE // Keep it loaded but hidden, or 1px
+        // STEP 1: Load URL in hidden WebView to generate valid cookies
         webView.loadUrl(url)
         
-        // Wait for cookies to populate (simple delay usually works better than complex listeners for this)
+        // Wait 4 seconds for JS execution and Cookie generation
         Handler(Looper.getMainLooper()).postDelayed({
             extractCookiesAndAnalyze(url)
-        }, 3500) // 3.5s delay to allow JS to execute on the page
+        }, 4000)
     }
 
     private fun extractCookiesAndAnalyze(url: String) {
         val cookies = CookieManager.getInstance().getCookie(url)
         val userAgent = webView.settings.userAgentString
         
-        if (cookies == null) {
+        if (cookies == null || cookies.isEmpty()) {
             tvStatus.text = "RETRYING BYPASS..."
-            Handler(Looper.getMainLooper()).postDelayed({ extractCookiesAndAnalyze(url) }, 2000)
+            // Give it 2 more seconds
+            Handler(Looper.getMainLooper()).postDelayed({ 
+                // Fallback: Proceed even if cookies are empty, maybe it's a public video
+                 performAnalysis(url, CookieManager.getInstance().getCookie(url) ?: "", userAgent)
+            }, 2000)
             return
         }
+        
+        performAnalysis(url, cookies, userAgent)
+    }
 
+    private fun performAnalysis(url: String, cookies: String, userAgent: String) {
         tvStatus.text = "ANALYZING STREAM..."
         
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val request = YoutubeDLRequest(url)
                 
-                // CRITICAL: PASS BROWSER CREDENTIALS TO YT-DLP
-                request.addHeader("Cookie", cookies)
+                // CRITICAL: Inject Browser Credentials
+                if (cookies.isNotEmpty()) request.addHeader("Cookie", cookies)
                 request.addHeader("User-Agent", userAgent)
                 
-                // Options to reduce errors
                 request.addOption("--no-playlist")
                 request.addOption("--no-check-certificate")
                 request.addOption("--geo-bypass")
-                // Fallback for no JS runtime in yt-dlp (we did the JS part in WebView)
+                // Force Android client simulation to avoid JS player issues
                 request.addOption("--extractor-args", "youtube:player_client=android") 
 
                 val info: VideoInfo = YoutubeDL.getInstance().getInfo(request)
                 
                 withContext(Dispatchers.Main) {
                     progressBar.visibility = View.INVISIBLE
+                    isAnalysisRunning.set(false)
                     showFormatSelector(info, url, cookies, userAgent)
                 }
 
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     progressBar.visibility = View.INVISIBLE
+                    isAnalysisRunning.set(false)
                     tvStatus.text = "FAILED"
                     tvStatus.setTextColor(Color.RED)
-                    showErrorDialog("Bot Check Failed: ${e.message}")
+                    // Common error: Sign in required. Cookies should fix this.
+                    showErrorDialog("Analysis Failed: ${e.message}")
                 }
             }
         }
@@ -206,6 +223,7 @@ class MainActivity : AppCompatActivity() {
 
         val seenQualities = HashSet<String>()
         for (f in formats) {
+            // Filter for valid video streams
             if (f.vcodec != "none" && f.height > 0) {
                 val q = "${f.height}p"
                 if (!seenQualities.contains(q)) {
@@ -216,6 +234,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         
+        // Sort high to low
         options.sortByDescending { it.quality.replace("p", "").toIntOrNull() ?: 0 }
         options.add(VideoOption("Audio Only", "MP3", "bestaudio/best"))
 
@@ -253,8 +272,8 @@ class MainActivity : AppCompatActivity() {
                 val cleanTitle = title.replace(Regex("[^a-zA-Z0-9.-]"), "_")
                 val request = YoutubeDLRequest(url)
                 
-                // Pass credentials again for the download phase
-                request.addHeader("Cookie", cookies)
+                // Inject Credentials for Download
+                if (cookies.isNotEmpty()) request.addHeader("Cookie", cookies)
                 request.addHeader("User-Agent", userAgent)
                 
                 if (qualityLabel == "Audio Only") {
@@ -267,6 +286,7 @@ class MainActivity : AppCompatActivity() {
                 
                 request.addOption("-o", downloadDir.absolutePath + "/%(title)s.%(ext)s")
                 request.addOption("--no-mtime")
+                request.addOption("--no-check-certificate")
                 
                 YoutubeDL.getInstance().execute(request, null) { progress, eta, line -> }
 

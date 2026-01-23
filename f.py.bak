@@ -3,7 +3,7 @@ import os
 import shutil
 import subprocess
 
-# --- MYTUBE REPAIR SCRIPT v2 (ARM64 EXCLUSIVE) ---
+# --- MYTUBE REPAIR SCRIPT v3 (ARM64 + COOKIE BRIDGE) ---
 
 def write_file(path, content):
     parent = os.path.dirname(path)
@@ -13,9 +13,9 @@ def write_file(path, content):
         f.write(content.strip())
     print(f"✅ Created: {path}")
 
-print("🛠️ Applying ARM64 Exclusive Fixes...")
+print("🛠️ Applying Bot Bypass & Cookie Bridge...")
 
-# 1. Update build.gradle.kts (Removed Splits, Enforced ARM64 NDK Filter)
+# 1. Update build.gradle.kts (ARM64 Exclusive)
 write_file("app/build.gradle.kts", """
 plugins {
     id("com.android.application")
@@ -30,10 +30,9 @@ android {
         applicationId = "org.alituama.mytube"
         minSdk = 24
         targetSdk = 34
-        versionCode = 307
-        versionName = "3.2.0"
+        versionCode = 308
+        versionName = "3.3.0"
         
-        // EXCLUSIVE: ONLY ARM64-V8A
         ndk {
             abiFilters.add("arm64-v8a")
         }
@@ -46,7 +45,6 @@ android {
         }
     }
     
-    // IMPORTANT: Ensure native libs are not compressed for dlopen() to work
     packaging {
         jniLibs {
             useLegacyPackaging = true
@@ -66,7 +64,6 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     
-    // Library for yt-dlp
     implementation("io.github.junkfood02.youtubedl-android:library:0.17.2")
     implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.17.2") 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
@@ -80,7 +77,7 @@ android.useAndroidX=true
 android.enableJetifier=true
 """)
 
-# 3. Fix GitHub Workflow (Look for specific debug APK)
+# 3. Fix GitHub Workflow
 write_file(".github/workflows/android.yml", """
 name: Android CI
 
@@ -108,7 +105,6 @@ jobs:
     - name: Build with Gradle
       run: ./gradlew assembleDebug --stacktrace
 
-    # FIXED: Specific path for single architecture build
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
@@ -117,8 +113,7 @@ jobs:
         if-no-files-found: error
 """)
 
-# 4. Update MainActivity.kt
-# We use a raw string r"" to avoid escape issues in Python
+# 4. Update MainActivity.kt (With Cookie Bridge)
 write_file("app/src/main/java/org/alituama/mytube/MainActivity.kt", r"""
 
 package org.alituama.mytube
@@ -129,14 +124,21 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.graphics.Color
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
+import android.webkit.CookieManager
+import android.webkit.WebChromeClient
+import android.webkit.WebSettings
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
@@ -157,6 +159,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvStatus: TextView
     private lateinit var etUrl: EditText
     private lateinit var progressBar: ProgressBar
+    private lateinit var webView: WebView // THE HIDDEN BROWSER
     private var lastUrl = ""
     private var isEngineReady = false
 
@@ -167,11 +170,11 @@ class MainActivity : AppCompatActivity() {
         etUrl = findViewById(R.id.etUrl)
         tvStatus = findViewById(R.id.tvStatus)
         progressBar = findViewById(R.id.progressBar)
+        webView = findViewById(R.id.webView)
         val btnFetch = findViewById<Button>(R.id.btnFetch)
 
+        setupHiddenBrowser()
         checkPermissions()
-        
-        // 1. Initialize the heavy engine (Background Thread)
         initEngine()
 
         etUrl.addTextChangedListener(object : TextWatcher {
@@ -196,42 +199,52 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupHiddenBrowser() {
+        // This WebView acts as our "Mozilla" to bypass bot checks
+        webView.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            userAgentString = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+            mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+        }
+        
+        webView.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                // Page loaded -> Cookies are ready
+            }
+        }
+        
+        // Clear old sessions
+        CookieManager.getInstance().removeAllCookies(null)
+        CookieManager.getInstance().flush()
+    }
+
     private fun initEngine() {
-        tvStatus.text = "INITIALIZING ARM64 ENGINE..."
+        tvStatus.text = "IGNITING ENGINE..."
         tvStatus.setTextColor(Color.GRAY)
         progressBar.visibility = View.VISIBLE
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Initialize the library (Extracts Python/FFmpeg from APK)
-                // We pass 'null' for the custom logger to use default
                 YoutubeDL.getInstance().init(applicationContext)
-
-                withContext(Dispatchers.Main) {
-                    tvStatus.text = "UPDATING BINARIES..."
-                }
-
-                // Update yt-dlp binary from internet (Crucial for fixing bugs)
+                
+                // Attempt update, but don't fail if offline
                 try {
-                     YoutubeDL.getInstance().updateYoutubeDL(applicationContext, YoutubeDL.UpdateChannel.STABLE)
-                } catch (e: Exception) {
-                    // Ignore update errors if offline, stick to embedded version
-                    e.printStackTrace()
-                }
+                    YoutubeDL.getInstance().updateYoutubeDL(applicationContext, YoutubeDL.UpdateChannel.STABLE)
+                } catch (e: Exception) { e.printStackTrace() }
 
                 isEngineReady = true
                 withContext(Dispatchers.Main) {
-                    tvStatus.text = "ENGINE READY (ARM64)"
+                    tvStatus.text = "READY (ARM64)"
                     tvStatus.setTextColor(Color.GREEN)
                     progressBar.visibility = View.INVISIBLE
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
                 withContext(Dispatchers.Main) {
-                    tvStatus.text = "INIT FAILED"
+                    tvStatus.text = "ENGINE ERROR"
                     tvStatus.setTextColor(Color.RED)
-                    // Show exact error for debugging
-                    showErrorDialog("Engine Init Failed: " + e.localizedMessage)
+                    showErrorDialog("Init Failed: ${e.message}")
                 }
             }
         }
@@ -239,53 +252,82 @@ class MainActivity : AppCompatActivity() {
 
     private fun processUrl(url: String) {
         if (!isEngineReady) {
-            Toast.makeText(this, "Engine is still booting...", Toast.LENGTH_SHORT).show()
-            initEngine() // Retry init if failed previously
+            Toast.makeText(this, "Engine booting...", Toast.LENGTH_SHORT).show()
+            initEngine()
             return
         }
 
         lastUrl = url
-        tvStatus.text = "SNIFFING METADATA..."
-        tvStatus.setTextColor(Color.parseColor("#FFD700"))
+        tvStatus.text = "BYPASSING BOT CHECK..."
+        tvStatus.setTextColor(Color.parseColor("#FFD700")) // Gold
         progressBar.visibility = View.VISIBLE
+        
+        // STEP 1: LOAD IN HIDDEN BROWSER TO GENERATE COOKIES
+        webView.visibility = View.INVISIBLE // Keep it loaded but hidden, or 1px
+        webView.loadUrl(url)
+        
+        // Wait for cookies to populate (simple delay usually works better than complex listeners for this)
+        Handler(Looper.getMainLooper()).postDelayed({
+            extractCookiesAndAnalyze(url)
+        }, 3500) // 3.5s delay to allow JS to execute on the page
+    }
 
+    private fun extractCookiesAndAnalyze(url: String) {
+        val cookies = CookieManager.getInstance().getCookie(url)
+        val userAgent = webView.settings.userAgentString
+        
+        if (cookies == null) {
+            tvStatus.text = "RETRYING BYPASS..."
+            Handler(Looper.getMainLooper()).postDelayed({ extractCookiesAndAnalyze(url) }, 2000)
+            return
+        }
+
+        tvStatus.text = "ANALYZING STREAM..."
+        
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val request = YoutubeDLRequest(url)
-                request.addOption("--no-playlist")
-                request.addOption("--user-agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1")
                 
+                // CRITICAL: PASS BROWSER CREDENTIALS TO YT-DLP
+                request.addHeader("Cookie", cookies)
+                request.addHeader("User-Agent", userAgent)
+                
+                // Options to reduce errors
+                request.addOption("--no-playlist")
+                request.addOption("--no-check-certificate")
+                request.addOption("--geo-bypass")
+                // Fallback for no JS runtime in yt-dlp (we did the JS part in WebView)
+                request.addOption("--extractor-args", "youtube:player_client=android") 
+
                 val info: VideoInfo = YoutubeDL.getInstance().getInfo(request)
                 
                 withContext(Dispatchers.Main) {
                     progressBar.visibility = View.INVISIBLE
-                    showFormatSelector(info, url)
+                    showFormatSelector(info, url, cookies, userAgent)
                 }
 
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     progressBar.visibility = View.INVISIBLE
-                    tvStatus.text = "ANALYSIS FAILED"
+                    tvStatus.text = "FAILED"
                     tvStatus.setTextColor(Color.RED)
-                    showErrorDialog(e.message ?: "Unknown Error")
+                    showErrorDialog("Bot Check Failed: ${e.message}")
                 }
             }
         }
     }
 
-    private fun showFormatSelector(info: VideoInfo, url: String) {
+    private fun showFormatSelector(info: VideoInfo, url: String, cookies: String, userAgent: String) {
         val formats = info.formats ?: emptyList()
         val options = ArrayList<VideoOption>()
         val title = info.title ?: "Video"
 
         val seenQualities = HashSet<String>()
         for (f in formats) {
-            // Filter out video-only streams (vcodec!=none, acodec==none) unless we want to merge (requires heavier ffmpeg ops)
-            // For stability, we look for streams that might have both or we rely on yt-dlp to merge if allowed.
             if (f.vcodec != "none" && f.height > 0) {
                 val q = "${f.height}p"
                 if (!seenQualities.contains(q)) {
-                    val desc = if (f.acodec != "none") "Standard" else "Video Only (Mute)"
+                    val desc = if (f.acodec != "none") "Standard" else "Video Only"
                     options.add(VideoOption(q, desc, f.formatId ?: ""))
                     seenQualities.add(q)
                 }
@@ -293,10 +335,10 @@ class MainActivity : AppCompatActivity() {
         }
         
         options.sortByDescending { it.quality.replace("p", "").toIntOrNull() ?: 0 }
-        options.add(VideoOption("Audio Only", "MP3/M4A", "bestaudio/best"))
+        options.add(VideoOption("Audio Only", "MP3", "bestaudio/best"))
 
         if (options.isEmpty()) {
-            tvStatus.text = "NO FORMATS FOUND"
+            tvStatus.text = "NO FORMATS"
             return
         }
 
@@ -306,7 +348,7 @@ class MainActivity : AppCompatActivity() {
         
         builder.setAdapter(adapter) { _, which ->
             val selected = options[which]
-            startDownload(title, url, selected.formatId, selected.quality)
+            startDownload(title, url, selected.formatId, selected.quality, cookies, userAgent)
         }
         
         builder.setOnCancelListener { 
@@ -316,7 +358,7 @@ class MainActivity : AppCompatActivity() {
         builder.show()
     }
 
-    private fun startDownload(title: String, url: String, formatId: String, qualityLabel: String) {
+    private fun startDownload(title: String, url: String, formatId: String, qualityLabel: String, cookies: String, userAgent: String) {
         tvStatus.text = "DOWNLOADING..."
         tvStatus.setTextColor(Color.GREEN)
         progressBar.visibility = View.VISIBLE
@@ -327,8 +369,12 @@ class MainActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val cleanTitle = title.replace(Regex("[^a-zA-Z0-9.-]"), "_")
-                
                 val request = YoutubeDLRequest(url)
+                
+                // Pass credentials again for the download phase
+                request.addHeader("Cookie", cookies)
+                request.addHeader("User-Agent", userAgent)
+                
                 if (qualityLabel == "Audio Only") {
                      request.addOption("-f", "bestaudio/best")
                      request.addOption("-x")
@@ -340,13 +386,11 @@ class MainActivity : AppCompatActivity() {
                 request.addOption("-o", downloadDir.absolutePath + "/%(title)s.%(ext)s")
                 request.addOption("--no-mtime")
                 
-                YoutubeDL.getInstance().execute(request, null) { progress, eta, line -> 
-                    // Optional: update UI with progress
-                }
+                YoutubeDL.getInstance().execute(request, null) { progress, eta, line -> }
 
                 withContext(Dispatchers.Main) {
                     progressBar.visibility = View.INVISIBLE
-                    tvStatus.text = "DOWNLOAD COMPLETE"
+                    tvStatus.text = "COMPLETE"
                     Toast.makeText(applicationContext, "Saved to Downloads/MyTube", Toast.LENGTH_LONG).show()
                     etUrl.text.clear()
                 }
@@ -354,7 +398,7 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     progressBar.visibility = View.INVISIBLE
-                    tvStatus.text = "DOWNLOAD ERROR"
+                    tvStatus.text = "ERROR"
                     tvStatus.setTextColor(Color.RED)
                     showErrorDialog(e.message ?: "Download failed")
                 }
@@ -392,7 +436,103 @@ class MainActivity : AppCompatActivity() {
   
 """)
 
-# 5. Ensure Manifest (extractNativeLibs=true is CRITICAL for init fix)
+# 5. Update Layout (Added WebView)
+write_file("app/src/main/res/layout/activity_main.xml", """
+
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#121212"
+    android:padding="24dp">
+
+    <!-- HIDDEN BROWSER (1x1 pixel) -->
+    <WebView
+        android:id="@+id/webView"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:visibility="invisible"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/tvTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="serif"
+        android:text="MYTUBE"
+        android:textColor="#FFD700"
+        android:textSize="32sp"
+        android:letterSpacing="0.2"
+        app:layout_constraintBottom_toTopOf="@+id/etUrl"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.3" />
+
+    <EditText
+        android:id="@+id/etUrl"
+        android:layout_width="0dp"
+        android:layout_height="60dp"
+        android:background="#1A1A1A"
+        android:hint="PASTE LINK HERE"
+        android:textColorHint="#505050"
+        android:textColor="#FFD700"
+        android:gravity="center"
+        android:textSize="14sp"
+        android:inputType="textUri"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/btnFetch"
+        android:layout_width="0dp"
+        android:layout_height="50dp"
+        android:layout_marginTop="20dp"
+        android:backgroundTint="#1A1A1A"
+        android:text="ENGAGE"
+        android:textColor="#FFD700"
+        android:letterSpacing="0.1"
+        android:stateListAnimator="@null"
+        app:strokeColor="#33FFD700"
+        app:strokeWidth="1dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/etUrl" />
+
+    <TextView
+        android:id="@+id/tvStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:text="SYSTEM IDLE"
+        android:textColor="#505050"
+        android:textSize="10sp"
+        android:letterSpacing="0.3"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/btnFetch" />
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:visibility="invisible"
+        android:indeterminateTint="#FFD700"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tvStatus" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+  
+""")
+
+# 6. Ensure Manifest
 write_file("app/src/main/AndroidManifest.xml", """
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
@@ -435,14 +575,14 @@ write_file("app/src/main/AndroidManifest.xml", """
 </manifest>
 """)
 
-print("🚀 Codebase Updated: ARM64-v8a Exclusive!")
+print("🚀 Codebase Updated: Cookie Bridge + ARM64!")
 
 # --- AUTO PUSH TO GITHUB ---
 try:
     print("🔄 Pushing to GitHub...")
     subprocess.run(["git", "remote", "add", "origin", "https://github.com/alwansan/MyTube.git"], check=False, capture_output=True)
     subprocess.run(["git", "add", "."], check=True)
-    subprocess.run(["git", "commit", "-m", "Fix: Arm64 Exclusive + Init Repair"], check=True)
+    subprocess.run(["git", "commit", "-m", "Fix: Bot Bypass + No JS Runtime"], check=True)
     subprocess.run(["git", "push", "-u", "origin", "main"], check=True)
     print("✅ Uploaded successfully.")
 except Exception as e:
