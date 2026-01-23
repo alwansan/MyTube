@@ -11,8 +11,8 @@ android {
         applicationId = "org.alituama.mytube"
         minSdk = 24
         targetSdk = 34
-        versionCode = 314
-        versionName = "3.9.0"
+        versionCode = 315
+        versionName = "3.9.1"
         
         ndk {
             abiFilters.add("arm64-v8a")
