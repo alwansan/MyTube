@@ -2,7 +2,6 @@ package org.alituama.mytube
 
 import android.Manifest
 import android.app.AlertDialog
-import android.app.DownloadManager
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
@@ -75,37 +74,41 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initEngine() {
-        tvStatus.text = "BOOTING ENGINE..."
+        tvStatus.text = "INITIALIZING ARM64 ENGINE..."
         tvStatus.setTextColor(Color.GRAY)
         progressBar.visibility = View.VISIBLE
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 // Initialize the library (Extracts Python/FFmpeg from APK)
+                // We pass 'null' for the custom logger to use default
                 YoutubeDL.getInstance().init(applicationContext)
 
                 withContext(Dispatchers.Main) {
-                    tvStatus.text = "CHECKING UPDATES..."
+                    tvStatus.text = "UPDATING BINARIES..."
                 }
 
                 // Update yt-dlp binary from internet (Crucial for fixing bugs)
                 try {
                      YoutubeDL.getInstance().updateYoutubeDL(applicationContext, YoutubeDL.UpdateChannel.STABLE)
                 } catch (e: Exception) {
-                    // Ignore update errors if offline
+                    // Ignore update errors if offline, stick to embedded version
+                    e.printStackTrace()
                 }
 
                 isEngineReady = true
                 withContext(Dispatchers.Main) {
-                    tvStatus.text = "ENGINE READY"
+                    tvStatus.text = "ENGINE READY (ARM64)"
                     tvStatus.setTextColor(Color.GREEN)
                     progressBar.visibility = View.INVISIBLE
                 }
             } catch (e: Exception) {
+                e.printStackTrace()
                 withContext(Dispatchers.Main) {
-                    tvStatus.text = "ENGINE FAILURE"
+                    tvStatus.text = "INIT FAILED"
                     tvStatus.setTextColor(Color.RED)
-                    showErrorDialog("Failed to initialize yt-dlp engine: ${e.message}")
+                    // Show exact error for debugging
+                    showErrorDialog("Engine Init Failed: " + e.localizedMessage)
                 }
             }
         }
@@ -114,11 +117,12 @@ class MainActivity : AppCompatActivity() {
     private fun processUrl(url: String) {
         if (!isEngineReady) {
             Toast.makeText(this, "Engine is still booting...", Toast.LENGTH_SHORT).show()
+            initEngine() // Retry init if failed previously
             return
         }
 
         lastUrl = url
-        tvStatus.text = "ANALYZING (DEEP)..."
+        tvStatus.text = "SNIFFING METADATA..."
         tvStatus.setTextColor(Color.parseColor("#FFD700"))
         progressBar.visibility = View.VISIBLE
 
@@ -126,6 +130,8 @@ class MainActivity : AppCompatActivity() {
             try {
                 val request = YoutubeDLRequest(url)
                 request.addOption("--no-playlist")
+                request.addOption("--user-agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1")
+                
                 val info: VideoInfo = YoutubeDL.getInstance().getInfo(request)
                 
                 withContext(Dispatchers.Main) {
@@ -151,10 +157,12 @@ class MainActivity : AppCompatActivity() {
 
         val seenQualities = HashSet<String>()
         for (f in formats) {
+            // Filter out video-only streams (vcodec!=none, acodec==none) unless we want to merge (requires heavier ffmpeg ops)
+            // For stability, we look for streams that might have both or we rely on yt-dlp to merge if allowed.
             if (f.vcodec != "none" && f.height > 0) {
                 val q = "${f.height}p"
                 if (!seenQualities.contains(q)) {
-                    val desc = if (f.acodec != "none") "Standard" else "High Quality"
+                    val desc = if (f.acodec != "none") "Standard" else "Video Only (Mute)"
                     options.add(VideoOption(q, desc, f.formatId ?: ""))
                     seenQualities.add(q)
                 }
@@ -165,7 +173,7 @@ class MainActivity : AppCompatActivity() {
         options.add(VideoOption("Audio Only", "MP3/M4A", "bestaudio/best"))
 
         if (options.isEmpty()) {
-            tvStatus.text = "NO FORMATS"
+            tvStatus.text = "NO FORMATS FOUND"
             return
         }
 
@@ -196,7 +204,6 @@ class MainActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val cleanTitle = title.replace(Regex("[^a-zA-Z0-9.-]"), "_")
-                val fileName = "${cleanTitle}_${qualityLabel}.%(ext)s"
                 
                 val request = YoutubeDLRequest(url)
                 if (qualityLabel == "Audio Only") {
@@ -210,7 +217,9 @@ class MainActivity : AppCompatActivity() {
                 request.addOption("-o", downloadDir.absolutePath + "/%(title)s.%(ext)s")
                 request.addOption("--no-mtime")
                 
-                YoutubeDL.getInstance().execute(request, null) { progress, eta, line -> }
+                YoutubeDL.getInstance().execute(request, null) { progress, eta, line -> 
+                    // Optional: update UI with progress
+                }
 
                 withContext(Dispatchers.Main) {
                     progressBar.visibility = View.INVISIBLE
