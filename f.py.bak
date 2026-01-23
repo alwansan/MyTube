@@ -3,7 +3,7 @@ import os
 import shutil
 import subprocess
 
-# --- MYTUBE BOT BYPASS PROTOCOL (Netscape Cookies) ---
+# --- MYTUBE MANIFEST & COOKIE REPAIR ---
 
 def write_file(path, content):
     parent = os.path.dirname(path)
@@ -13,7 +13,7 @@ def write_file(path, content):
         f.write(content.strip())
     print(f"✅ Created: {path}")
 
-print("🛠️ Applying Bot Bypass Protocol...")
+print("🛠️ Applying Final Build Repairs...")
 
 # 1. ROOT build.gradle.kts
 write_file("build.gradle.kts", """
@@ -60,8 +60,8 @@ android {
         applicationId = "org.alituama.mytube"
         minSdk = 24
         targetSdk = 34
-        versionCode = 314
-        versionName = "3.9.0"
+        versionCode = 315
+        versionName = "3.9.1"
         
         ndk {
             abiFilters.add("arm64-v8a")
@@ -100,14 +100,14 @@ dependencies {
 }
 """)
 
-# 4. gradle.properties
+# 4. gradle.properties (Increased memory)
 write_file("gradle.properties", """
-org.gradle.jvmargs=-Xmx3072m -Dfile.encoding=UTF-8
+org.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8
 android.useAndroidX=true
 android.enableJetifier=true
 """)
 
-# 5. GitHub Workflow
+# 5. GitHub Workflow (Added clean task)
 write_file(".github/workflows/android.yml", """
 name: Android CI
 
@@ -133,7 +133,7 @@ jobs:
       run: chmod +x gradlew
 
     - name: Build with Gradle
-      run: ./gradlew assembleDebug --stacktrace
+      run: ./gradlew clean assembleDebug --stacktrace
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
@@ -143,7 +143,7 @@ jobs:
         if-no-files-found: error
 """)
 
-# 6. MainActivity.kt (Netscape Cookie Implementation)
+# 6. MainActivity.kt (Preserved Netscape Logic)
 write_file("app/src/main/java/org/alituama/mytube/MainActivity.kt", r"""
 
 package org.alituama.mytube
@@ -613,7 +613,7 @@ write_file("app/src/main/res/layout/activity_main.xml", """
   
 """)
 
-# 8. Manifest
+# 8. Manifest (Fix: Removed missing @xml references)
 write_file("app/src/main/AndroidManifest.xml", """
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
@@ -627,14 +627,11 @@ write_file("app/src/main/AndroidManifest.xml", """
 
     <application
         android:allowBackup="true"
-        android:dataExtractionRules="@xml/data_extraction_rules"
-        android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="MyTube"
         android:supportsRtl="true"
         android:theme="@style/Theme.MyTube"
         android:usesCleartextTraffic="true"
-        android:extractNativeLibs="true"
         tools:targetApi="31">
         
         <activity
@@ -656,14 +653,14 @@ write_file("app/src/main/AndroidManifest.xml", """
 </manifest>
 """)
 
-print("🚀 Bot Bypass Protocol Engaged!")
+print("🚀 Build Manifest Repaired!")
 
 # --- AUTO PUSH ---
 try:
     print("🔄 Pushing to GitHub...")
     subprocess.run(["git", "remote", "add", "origin", "https://github.com/alwansan/MyTube.git"], check=False, capture_output=True)
     subprocess.run(["git", "add", "."], check=True)
-    subprocess.run(["git", "commit", "-m", "Fix: Netscape Cookies for Bot Bypass"], check=True)
+    subprocess.run(["git", "commit", "-m", "Fix: Removed missing XML refs & clean build"], check=True)
     subprocess.run(["git", "push", "-u", "origin", "main"], check=True)
     print("✅ Uploaded successfully.")
 except Exception as e:
