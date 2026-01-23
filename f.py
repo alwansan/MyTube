@@ -3,7 +3,7 @@ import os
 import shutil
 import subprocess
 
-# --- MYTUBE DEPENDENCY ALIGNMENT (ARM64 + STABLE LIBS) ---
+# --- MYTUBE ARTIFACT RESTORATION & BUILD FIX ---
 
 def write_file(path, content):
     parent = os.path.dirname(path)
@@ -13,7 +13,7 @@ def write_file(path, content):
         f.write(content.strip())
     print(f"✅ Created: {path}")
 
-print("🛠️ Aligning Dependencies & Fixing Build...")
+print("🛠️ Restoring Artifacts & Finalizing Build...")
 
 # 1. ROOT build.gradle.kts
 write_file("build.gradle.kts", """
@@ -46,7 +46,7 @@ include(":app")
 """)
 
 # 3. APP build.gradle.kts
-# FIX: Using standard 'com.yausername' deps to match imports
+# FIX: Revert to Junkfood02 Artifacts (0.17.2) which are confirmed to exist
 write_file("app/build.gradle.kts", """
 plugins {
     id("com.android.application")
@@ -61,8 +61,8 @@ android {
         applicationId = "org.alituama.mytube"
         minSdk = 24
         targetSdk = 34
-        versionCode = 311
-        versionName = "3.6.0"
+        versionCode = 312
+        versionName = "3.7.0"
         
         ndk {
             abiFilters.add("arm64-v8a")
@@ -95,9 +95,9 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     
-    // FIX: Use stable version with correct package names
-    implementation("com.yausername.youtubedl-android:library:0.14.6")
-    implementation("com.yausername.youtubedl-android:ffmpeg:0.14.6") 
+    // FIX: Restoring Junkfood02 artifacts
+    implementation("io.github.junkfood02.youtubedl-android:library:0.17.2")
+    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.17.2") 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
 }
 """)
@@ -145,7 +145,7 @@ jobs:
         if-no-files-found: error
 """)
 
-# 6. MainActivity.kt (Callback Removed)
+# 6. MainActivity.kt (Safety Mode: No Callback)
 write_file("app/src/main/java/org/alituama/mytube/MainActivity.kt", r"""
 
 package org.alituama.mytube
@@ -414,8 +414,8 @@ class MainActivity : AppCompatActivity() {
                 request.addOption("--no-mtime")
                 request.addOption("--no-check-certificate")
                 
-                // Fix: Pass null for callback to avoid ANY lambda type errors during compilation.
-                // We sacrifice progress bar precision for build stability.
+                // CRITICAL FIX: Pass null, null to execute() to avoid Kotlin lambda type inference errors
+                // This sacrifices progress updates for build stability.
                 YoutubeDL.getInstance().execute(request, null, null)
 
                 withContext(Dispatchers.Main) {
@@ -563,7 +563,7 @@ write_file("app/src/main/res/layout/activity_main.xml", """
   
 """)
 
-# 8. Manifest (Package Attribute Added)
+# 8. Manifest
 write_file("app/src/main/AndroidManifest.xml", """
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
@@ -607,14 +607,14 @@ write_file("app/src/main/AndroidManifest.xml", """
 </manifest>
 """)
 
-print("🚀 Dependency Fix Deployed!")
+print("🚀 Build Restoration Complete!")
 
 # --- AUTO PUSH ---
 try:
     print("🔄 Pushing to GitHub...")
     subprocess.run(["git", "remote", "add", "origin", "https://github.com/alwansan/MyTube.git"], check=False, capture_output=True)
     subprocess.run(["git", "add", "."], check=True)
-    subprocess.run(["git", "commit", "-m", "Fix: Dependency & Import Alignment"], check=True)
+    subprocess.run(["git", "commit", "-m", "Fix: Artifacts & Compilation"], check=True)
     subprocess.run(["git", "push", "-u", "origin", "main"], check=True)
     print("✅ Uploaded successfully.")
 except Exception as e:

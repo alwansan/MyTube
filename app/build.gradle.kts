@@ -11,8 +11,8 @@ android {
         applicationId = "org.alituama.mytube"
         minSdk = 24
         targetSdk = 34
-        versionCode = 311
-        versionName = "3.6.0"
+        versionCode = 312
+        versionName = "3.7.0"
         
         ndk {
             abiFilters.add("arm64-v8a")
@@ -45,8 +45,8 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     
-    // FIX: Use stable version with correct package names
-    implementation("com.yausername.youtubedl-android:library:0.14.6")
-    implementation("com.yausername.youtubedl-android:ffmpeg:0.14.6") 
+    // FIX: Restoring Junkfood02 artifacts
+    implementation("io.github.junkfood02.youtubedl-android:library:0.17.2")
+    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.17.2") 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
 }

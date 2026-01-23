@@ -264,8 +264,8 @@ class MainActivity : AppCompatActivity() {
                 request.addOption("--no-mtime")
                 request.addOption("--no-check-certificate")
                 
-                // Fix: Pass null for callback to avoid ANY lambda type errors during compilation.
-                // We sacrifice progress bar precision for build stability.
+                // CRITICAL FIX: Pass null, null to execute() to avoid Kotlin lambda type inference errors
+                // This sacrifices progress updates for build stability.
                 YoutubeDL.getInstance().execute(request, null, null)
 
                 withContext(Dispatchers.Main) {
