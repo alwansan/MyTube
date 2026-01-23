@@ -147,7 +147,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun extractCookiesAndAnalyze(url: String) {
-        // Fix: nullable handling
         val rawCookies = CookieManager.getInstance().getCookie(url)
         val cookies = rawCookies ?: ""
         val userAgent = webView.settings.userAgentString
@@ -265,10 +264,9 @@ class MainActivity : AppCompatActivity() {
                 request.addOption("--no-mtime")
                 request.addOption("--no-check-certificate")
                 
-                // Fix: Explicit types for lambda to prevent compilation error
-                YoutubeDL.getInstance().execute(request, null) { progress: Float, eta: Long, line: String? -> 
-                    // Progress callback
-                }
+                // Fix: Pass null for callback to avoid ANY lambda type errors during compilation.
+                // We sacrifice progress bar precision for build stability.
+                YoutubeDL.getInstance().execute(request, null, null)
 
                 withContext(Dispatchers.Main) {
                     progressBar.visibility = View.INVISIBLE
