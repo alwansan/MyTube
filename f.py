@@ -3,7 +3,7 @@ import os
 import shutil
 import subprocess
 
-# --- MYTUBE FULL REPAIR SCRIPT (ARM64 + COOKIE BRIDGE + BUILD FIX) ---
+# --- MYTUBE FINAL REPAIR (ARM64 + COMPILATION FIX) ---
 
 def write_file(path, content):
     parent = os.path.dirname(path)
@@ -13,9 +13,9 @@ def write_file(path, content):
         f.write(content.strip())
     print(f"✅ Created: {path}")
 
-print("🛠️ Initiating Full Project Reconstruction...")
+print("🛠️ Initiating Compile Fix...")
 
-# 1. ROOT build.gradle.kts (Fixes missing plugins)
+# 1. ROOT build.gradle.kts
 write_file("build.gradle.kts", """
 // Top-level build file
 plugins {
@@ -24,7 +24,7 @@ plugins {
 }
 """)
 
-# 2. SETTINGS.gradle.kts (Fixes project structure)
+# 2. SETTINGS.gradle.kts
 write_file("settings.gradle.kts", """
 pluginManagement {
     repositories {
@@ -45,7 +45,7 @@ rootProject.name = "MyTube"
 include(":app")
 """)
 
-# 3. APP build.gradle.kts (ARM64 Exclusive + Legacy Packaging)
+# 3. APP build.gradle.kts
 write_file("app/build.gradle.kts", """
 plugins {
     id("com.android.application")
@@ -60,10 +60,9 @@ android {
         applicationId = "org.alituama.mytube"
         minSdk = 24
         targetSdk = 34
-        versionCode = 309
-        versionName = "3.4.0"
+        versionCode = 310
+        versionName = "3.5.0"
         
-        // EXCLUSIVE: ONLY ARM64-V8A to save space and fix splits
         ndk {
             abiFilters.add("arm64-v8a")
         }
@@ -76,7 +75,6 @@ android {
         }
     }
     
-    // CRITICAL: Prevent compression of native libs so they extract correctly on install
     packaging {
         jniLibs {
             useLegacyPackaging = true
@@ -96,7 +94,6 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     
-    // YoutubeDL-Android
     implementation("io.github.junkfood02.youtubedl-android:library:0.17.2")
     implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.17.2") 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
@@ -146,7 +143,7 @@ jobs:
         if-no-files-found: error
 """)
 
-# 6. MainActivity.kt (With Cookie Bridge)
+# 6. MainActivity.kt (Compiled Fix)
 write_file("app/src/main/java/org/alituama/mytube/MainActivity.kt", r"""
 
 package org.alituama.mytube
@@ -184,7 +181,7 @@ import com.yausername.youtubedl_android.YoutubeDLRequest
 import com.yausername.youtubedl_android.mapper.VideoInfo
 import kotlinx.coroutines.*
 import java.io.File
-import java.util.concurrent.atomic.AtomicBoolean
+import org.alituama.mytube.R
 
 class MainActivity : AppCompatActivity() {
 
@@ -194,7 +191,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView 
     private var lastUrl = ""
     private var isEngineReady = false
-    private val isAnalysisRunning = AtomicBoolean(false)
+    private var isAnalysisRunning = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -206,13 +203,8 @@ class MainActivity : AppCompatActivity() {
         webView = findViewById(R.id.webView)
         val btnFetch = findViewById<Button>(R.id.btnFetch)
 
-        // 1. Setup the "Stealth Browser"
         setupHiddenBrowser()
-        
-        // 2. Permission Check
         checkPermissions()
-        
-        // 3. Boot Engine
         initEngine()
 
         etUrl.addTextChangedListener(object : TextWatcher {
@@ -220,8 +212,7 @@ class MainActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: Editable?) {
                 val url = s.toString().trim()
-                // Auto-trigger if it looks like a valid link and we aren't already busy
-                if (url.length > 10 && (url.contains("http") || url.contains("youtu")) && url != lastUrl && !isAnalysisRunning.get()) {
+                if (url.length > 10 && (url.contains("http") || url.contains("youtu")) && url != lastUrl && !isAnalysisRunning) {
                     processUrl(url)
                 }
             }
@@ -239,11 +230,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupHiddenBrowser() {
-        // This WebView acts as our "Mozilla" to bypass bot checks
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
-            // Spoof as a standard Android Chrome to blend in
             userAgentString = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         }
@@ -251,11 +240,9 @@ class MainActivity : AppCompatActivity() {
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                // Cookies are automatically stored in CookieManager
             }
         }
         
-        // Clear old sessions for a fresh start
         CookieManager.getInstance().removeAllCookies(null)
         CookieManager.getInstance().flush()
     }
@@ -267,10 +254,7 @@ class MainActivity : AppCompatActivity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Initialize yt-dlp binary
                 YoutubeDL.getInstance().init(applicationContext)
-                
-                // Silent update attempt
                 try {
                     YoutubeDL.getInstance().updateYoutubeDL(applicationContext, YoutubeDL.UpdateChannel.STABLE)
                 } catch (e: Exception) { e.printStackTrace() }
@@ -297,31 +281,30 @@ class MainActivity : AppCompatActivity() {
             return
         }
         
-        isAnalysisRunning.set(true)
+        isAnalysisRunning = true
         lastUrl = url
         tvStatus.text = "BYPASSING BOT CHECK..."
-        tvStatus.setTextColor(Color.parseColor("#FFD700")) // Gold
+        tvStatus.setTextColor(Color.parseColor("#FFD700"))
         progressBar.visibility = View.VISIBLE
         
-        // STEP 1: Load URL in hidden WebView to generate valid cookies
         webView.loadUrl(url)
         
-        // Wait 4 seconds for JS execution and Cookie generation
         Handler(Looper.getMainLooper()).postDelayed({
             extractCookiesAndAnalyze(url)
         }, 4000)
     }
 
     private fun extractCookiesAndAnalyze(url: String) {
-        val cookies = CookieManager.getInstance().getCookie(url)
+        // Fix: nullable handling
+        val rawCookies = CookieManager.getInstance().getCookie(url)
+        val cookies = rawCookies ?: ""
         val userAgent = webView.settings.userAgentString
         
-        if (cookies == null || cookies.isEmpty()) {
+        if (cookies.isEmpty()) {
             tvStatus.text = "RETRYING BYPASS..."
-            // Give it 2 more seconds
             Handler(Looper.getMainLooper()).postDelayed({ 
-                // Fallback: Proceed even if cookies are empty, maybe it's a public video
-                 performAnalysis(url, CookieManager.getInstance().getCookie(url) ?: "", userAgent)
+                 val retryCookies = CookieManager.getInstance().getCookie(url) ?: ""
+                 performAnalysis(url, retryCookies, userAgent)
             }, 2000)
             return
         }
@@ -335,32 +318,28 @@ class MainActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val request = YoutubeDLRequest(url)
-                
-                // CRITICAL: Inject Browser Credentials
                 if (cookies.isNotEmpty()) request.addHeader("Cookie", cookies)
                 request.addHeader("User-Agent", userAgent)
                 
                 request.addOption("--no-playlist")
                 request.addOption("--no-check-certificate")
                 request.addOption("--geo-bypass")
-                // Force Android client simulation to avoid JS player issues
                 request.addOption("--extractor-args", "youtube:player_client=android") 
 
                 val info: VideoInfo = YoutubeDL.getInstance().getInfo(request)
                 
                 withContext(Dispatchers.Main) {
                     progressBar.visibility = View.INVISIBLE
-                    isAnalysisRunning.set(false)
+                    isAnalysisRunning = false
                     showFormatSelector(info, url, cookies, userAgent)
                 }
 
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     progressBar.visibility = View.INVISIBLE
-                    isAnalysisRunning.set(false)
+                    isAnalysisRunning = false
                     tvStatus.text = "FAILED"
                     tvStatus.setTextColor(Color.RED)
-                    // Common error: Sign in required. Cookies should fix this.
                     showErrorDialog("Analysis Failed: ${e.message}")
                 }
             }
@@ -374,7 +353,6 @@ class MainActivity : AppCompatActivity() {
 
         val seenQualities = HashSet<String>()
         for (f in formats) {
-            // Filter for valid video streams
             if (f.vcodec != "none" && f.height > 0) {
                 val q = "${f.height}p"
                 if (!seenQualities.contains(q)) {
@@ -385,7 +363,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
         
-        // Sort high to low
         options.sortByDescending { it.quality.replace("p", "").toIntOrNull() ?: 0 }
         options.add(VideoOption("Audio Only", "MP3", "bestaudio/best"))
 
@@ -420,10 +397,7 @@ class MainActivity : AppCompatActivity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val cleanTitle = title.replace(Regex("[^a-zA-Z0-9.-]"), "_")
                 val request = YoutubeDLRequest(url)
-                
-                // Inject Credentials for Download
                 if (cookies.isNotEmpty()) request.addHeader("Cookie", cookies)
                 request.addHeader("User-Agent", userAgent)
                 
@@ -439,7 +413,10 @@ class MainActivity : AppCompatActivity() {
                 request.addOption("--no-mtime")
                 request.addOption("--no-check-certificate")
                 
-                YoutubeDL.getInstance().execute(request, null) { progress, eta, line -> }
+                // Fix: Explicit types for lambda to prevent compilation error
+                YoutubeDL.getInstance().execute(request, null) { progress: Float, eta: Long, line: String? -> 
+                    // Progress callback
+                }
 
                 withContext(Dispatchers.Main) {
                     progressBar.visibility = View.INVISIBLE
@@ -489,7 +466,7 @@ class MainActivity : AppCompatActivity() {
   
 """)
 
-# 7. Layout XML (Added Hidden WebView)
+# 7. Layout XML
 write_file("app/src/main/res/layout/activity_main.xml", """
 
 <?xml version="1.0" encoding="utf-8"?>
@@ -501,11 +478,11 @@ write_file("app/src/main/res/layout/activity_main.xml", """
     android:background="#121212"
     android:padding="24dp">
 
-    <!-- HIDDEN BROWSER (0x0 pixel to be invisible but active) -->
+    <!-- HIDDEN BROWSER (1dp to be safe from 0px culling) -->
     <WebView
         android:id="@+id/webView"
-        android:layout_width="1px"
-        android:layout_height="1px"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
         android:visibility="visible"
         android:alpha="0.0"
         app:layout_constraintStart_toStartOf="parent"
@@ -586,7 +563,7 @@ write_file("app/src/main/res/layout/activity_main.xml", """
   
 """)
 
-# 8. Manifest (Native Lib Extraction)
+# 8. Manifest
 write_file("app/src/main/AndroidManifest.xml", """
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
@@ -629,14 +606,14 @@ write_file("app/src/main/AndroidManifest.xml", """
 </manifest>
 """)
 
-print("🚀 Full Project Reconstruction Complete!")
+print("🚀 Compilation Fix Deployed!")
 
 # --- AUTO PUSH ---
 try:
     print("🔄 Pushing to GitHub...")
     subprocess.run(["git", "remote", "add", "origin", "https://github.com/alwansan/MyTube.git"], check=False, capture_output=True)
     subprocess.run(["git", "add", "."], check=True)
-    subprocess.run(["git", "commit", "-m", "Fix: Build & Bot Bypass"], check=True)
+    subprocess.run(["git", "commit", "-m", "Fix: Kotlin Compilation Errors"], check=True)
     subprocess.run(["git", "push", "-u", "origin", "main"], check=True)
     print("✅ Uploaded successfully.")
 except Exception as e:

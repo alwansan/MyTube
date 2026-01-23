@@ -7,11 +7,11 @@
     android:background="#121212"
     android:padding="24dp">
 
-    <!-- HIDDEN BROWSER (0x0 pixel to be invisible but active) -->
+    <!-- HIDDEN BROWSER (1dp to be safe from 0px culling) -->
     <WebView
         android:id="@+id/webView"
-        android:layout_width="1px"
-        android:layout_height="1px"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
         android:visibility="visible"
         android:alpha="0.0"
         app:layout_constraintStart_toStartOf="parent"
