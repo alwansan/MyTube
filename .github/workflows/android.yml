@@ -24,7 +24,6 @@ jobs:
     - name: Build with Gradle
       run: ./gradlew assembleDebug --stacktrace
 
-    # FIXED: Specific path for single architecture build
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
