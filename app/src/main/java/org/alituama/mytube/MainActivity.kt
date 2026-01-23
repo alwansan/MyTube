@@ -89,11 +89,10 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 // Update yt-dlp binary from internet (Crucial for fixing bugs)
-                // This might take a moment on first run
                 try {
                      YoutubeDL.getInstance().updateYoutubeDL(applicationContext, YoutubeDL.UpdateChannel.STABLE)
                 } catch (e: Exception) {
-                    // Ignore update errors if offline, use bundled version
+                    // Ignore update errors if offline
                 }
 
                 isEngineReady = true
@@ -106,7 +105,7 @@ class MainActivity : AppCompatActivity() {
                 withContext(Dispatchers.Main) {
                     tvStatus.text = "ENGINE FAILURE"
                     tvStatus.setTextColor(Color.RED)
-                    showErrorDialog("Failed to initialize yt-dlp engine: \${e.message}")
+                    showErrorDialog("Failed to initialize yt-dlp engine: ${e.message}")
                 }
             }
         }
@@ -125,11 +124,8 @@ class MainActivity : AppCompatActivity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Execute yt-dlp -J (Dump JSON)
                 val request = YoutubeDLRequest(url)
                 request.addOption("--no-playlist")
-                
-                // Get Video Info
                 val info: VideoInfo = YoutubeDL.getInstance().getInfo(request)
                 
                 withContext(Dispatchers.Main) {
@@ -153,28 +149,19 @@ class MainActivity : AppCompatActivity() {
         val options = ArrayList<VideoOption>()
         val title = info.title ?: "Video"
 
-        // Filter and sort formats
-        // We look for videos that have both height and ext
-        // yt-dlp usually separates video/audio for high quality, but the lib handles merging automatically
-        
-        // 1. Gather distinct qualities
         val seenQualities = HashSet<String>()
-        
         for (f in formats) {
             if (f.vcodec != "none" && f.height > 0) {
                 val q = "${f.height}p"
                 if (!seenQualities.contains(q)) {
-                    val desc = if (f.acodec != "none") "Standard (Ready)" else "High Quality (Auto-Merge)"
+                    val desc = if (f.acodec != "none") "Standard" else "High Quality"
                     options.add(VideoOption(q, desc, f.formatId ?: ""))
                     seenQualities.add(q)
                 }
             }
         }
         
-        // Sort descending
         options.sortByDescending { it.quality.replace("p", "").toIntOrNull() ?: 0 }
-        
-        // Add Audio Only Option
         options.add(VideoOption("Audio Only", "MP3/M4A", "bestaudio/best"))
 
         if (options.isEmpty()) {
@@ -210,26 +197,20 @@ class MainActivity : AppCompatActivity() {
             try {
                 val cleanTitle = title.replace(Regex("[^a-zA-Z0-9.-]"), "_")
                 val fileName = "${cleanTitle}_${qualityLabel}.%(ext)s"
-                val finalPath = File(downloadDir, fileName).absolutePath
                 
                 val request = YoutubeDLRequest(url)
-                
                 if (qualityLabel == "Audio Only") {
                      request.addOption("-f", "bestaudio/best")
-                     request.addOption("-x") // Extract audio
+                     request.addOption("-x")
                      request.addOption("--audio-format", "mp3")
                 } else {
-                     // Download video+audio and merge
                      request.addOption("-f", "$formatId+bestaudio/best")
                 }
                 
                 request.addOption("-o", downloadDir.absolutePath + "/%(title)s.%(ext)s")
                 request.addOption("--no-mtime")
                 
-                // Execute Download
-                YoutubeDL.getInstance().execute(request, null) { progress, eta, line ->
-                     // Optional: Update progress UI here if needed
-                }
+                YoutubeDL.getInstance().execute(request, null) { progress, eta, line -> }
 
                 withContext(Dispatchers.Main) {
                     progressBar.visibility = View.INVISIBLE

@@ -11,10 +11,9 @@ android {
         applicationId = "org.alituama.mytube"
         minSdk = 24
         targetSdk = 34
-        versionCode = 300
-        versionName = "3.0.0"
+        versionCode = 306
+        versionName = "3.1.1"
         
-        // Define CPU Architectures for NDK
         ndk {
             abiFilters.add("armeabi-v7a")
             abiFilters.add("arm64-v8a")
@@ -23,7 +22,6 @@ android {
         }
     }
     
-    // Split APKs per ABI to reduce install size (optional, but good for heavy libs)
     splits {
         abi {
             isEnable = true
@@ -52,9 +50,7 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     
-    // Native yt-dlp wrapper (The Heavy Engine)
     implementation("io.github.junkfood02.youtubedl-android:library:0.17.2")
     implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.17.2") 
-    
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
 }

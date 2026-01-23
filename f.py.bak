@@ -3,20 +3,17 @@ import os
 import shutil
 import subprocess
 
-# --- MYTUBE REPAIR SCRIPT ---
+# --- MYTUBE FINAL FIX: HEAVY ENGINE + CI REPAIR ---
 
-# Fixed write_file to handle root directory files
 def write_file(path, content):
-    parent = os.path.dirname(path)
-    if parent:
-        os.makedirs(parent, exist_ok=True)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, 'w', encoding='utf-8') as f:
         f.write(content.strip())
     print(f"✅ Created: {path}")
 
-print("🛠️ Applying Fixes...")
+print("🛠️ Applying Nuclear Fix & Repairing CI/CD...")
 
-# 1. Update build.gradle.kts
+# 1. Update build.gradle.kts (Configure Splits & Universal APK)
 write_file("app/build.gradle.kts", """
 plugins {
     id("com.android.application")
@@ -31,8 +28,8 @@ android {
         applicationId = "org.alituama.mytube"
         minSdk = 24
         targetSdk = 34
-        versionCode = 306
-        versionName = "3.1.1"
+        versionCode = 305
+        versionName = "3.1.0"
         
         ndk {
             abiFilters.add("armeabi-v7a")
@@ -42,6 +39,7 @@ android {
         }
     }
     
+    // IMPORTANT: Generate a Universal APK to fix missing file errors in GitHub Actions
     splits {
         abi {
             isEnable = true
@@ -70,20 +68,21 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     
+    // Heavy Engine
     implementation("io.github.junkfood02.youtubedl-android:library:0.17.2")
     implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.17.2") 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
 }
 """)
 
-# 2. Update gradle.properties
+# 2. Update gradle.properties (Increase memory for native build)
 write_file("gradle.properties", """
 org.gradle.jvmargs=-Xmx3072m -Dfile.encoding=UTF-8
 android.useAndroidX=true
 android.enableJetifier=true
 """)
 
-# 3. Fix GitHub Workflow
+# 3. Fix GitHub Workflow (Wildcard Path Fix)
 write_file(".github/workflows/android.yml", """
 name: Android CI
 
@@ -111,6 +110,7 @@ jobs:
     - name: Build with Gradle
       run: ./gradlew assembleDebug --stacktrace
 
+    # FIXED: Uses wildcard path to find ANY APK generated (Universal or Split)
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
@@ -120,7 +120,6 @@ jobs:
 """)
 
 # 4. Update MainActivity.kt
-# Note: Using python literal syntax for Kotlin code to avoid escape issues
 write_file("app/src/main/java/org/alituama/mytube/MainActivity.kt", """
 
 package org.alituama.mytube
@@ -230,7 +229,7 @@ class MainActivity : AppCompatActivity() {
                 withContext(Dispatchers.Main) {
                     tvStatus.text = "ENGINE FAILURE"
                     tvStatus.setTextColor(Color.RED)
-                    showErrorDialog("Failed to initialize yt-dlp engine: ${e.message}")
+                    showErrorDialog("Failed to initialize yt-dlp engine: \${e.message}")
                 }
             }
         }
@@ -434,7 +433,7 @@ try:
     print("🔄 Pushing to GitHub...")
     subprocess.run(["git", "remote", "add", "origin", "https://github.com/alwansan/MyTube.git"], check=False, capture_output=True)
     subprocess.run(["git", "add", "."], check=True)
-    subprocess.run(["git", "commit", "-m", "Fix: CI/CD Path Error"], check=True)
+    subprocess.run(["git", "commit", "-m", "Fix: Heavy Engine + CI Pipeline Repair"], check=True)
     subprocess.run(["git", "push", "-u", "origin", "main"], check=True)
     print("✅ Uploaded successfully.")
 except Exception as e:
