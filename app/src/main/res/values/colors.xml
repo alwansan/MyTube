@@ -1,6 +1,5 @@
 <resources>
     <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
-    <color name="youtube_red">#FF0000</color>
-    <color name="card_bg">#1F1F1F</color>
+    <color name="gold">#FFD700</color>
+    <color name="dark_matter">#121212</color>
 </resources>

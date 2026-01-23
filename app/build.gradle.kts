@@ -11,10 +11,10 @@ android {
         applicationId = "org.alituama.mytube"
         minSdk = 24
         targetSdk = 34
-        versionCode = 40
-        versionName = "4.0"
+        versionCode = 100
+        versionName = "1.0.0"
     }
-
+    
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -26,7 +26,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_1_8
     }
     kotlinOptions { jvmTarget = "1.8" }
-    buildFeatures { viewBinding = true }
 }
 
 dependencies {
@@ -34,5 +33,4 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
-    implementation("androidx.webkit:webkit:1.9.0")
 }

@@ -1,13 +1,15 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- الثيم الشفاف (النافذة العائمة) -->
-    <style name="Theme.MyTube.Dialog" parent="Theme.Material3.DayNight.Dialog">
-        <item name="android:windowBackground">@android:color/transparent</item>
-        <item name="android:windowIsTranslucent">true</item>
-        <item name="android:backgroundDimEnabled">true</item>
-        <!-- جعل النافذة تأخذ عرض الشاشة تقريباً -->
-        <item name="android:windowMinWidthMajor">90%</item>
-        <item name="android:windowMinWidthMinor">90%</item>
-        <item name="colorPrimary">#FF0000</item>
-        <item name="colorOnPrimary">#FFFFFF</item>
+    <style name="Theme.MyTube" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">#FFD700</item>
+        <item name="colorPrimaryVariant">#C5A028</item>
+        <item name="colorOnPrimary">#000000</item>
+        <item name="android:windowBackground">#121212</item>
+        <item name="android:statusBarColor">#0F0F0F</item>
+    </style>
+    
+    <style name="SyriacDialog" parent="Theme.MaterialComponents.DayNight.Dialog.Alert">
+        <item name="android:background">#1A1A1A</item>
+        <item name="android:textColor">#FFD700</item>
+        <item name="colorAccent">#FFD700</item>
     </style>
 </resources>
