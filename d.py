@@ -1,4 +1,8 @@
-name: Build APK
+import os
+import subprocess
+
+# تحديث ملف GitHub Action
+github_action_yaml = """name: Build APK
 
 on:
   push:
@@ -33,3 +37,19 @@ jobs:
       with:
         name: app-debug-apk
         path: app/build/outputs/apk/debug/app-debug.apk
+"""
+
+# إنشاء الملف
+with open(".github/workflows/android.yml", "w", encoding="utf-8") as f:
+    f.write(github_action_yaml)
+
+print("✅ تم تحديث ملف GitHub Action")
+
+# Git operations
+try:
+    subprocess.run(["git", "add", "."], check=True)
+    subprocess.run(["git", "commit", "-m", "Fix: Update GitHub Actions versions"], check=True)
+    subprocess.run(["git", "push"], check=True)
+    print("✅ تم الرفع إلى GitHub")
+except subprocess.CalledProcessError as e:
+    print(f"❌ خطأ في Git: {e}")
