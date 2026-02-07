@@ -11,41 +11,27 @@ android {
         applicationId = "org.alituama.mytube"
         minSdk = 24
         targetSdk = 34
-        versionCode = 316
-        versionName = "3.9.2"
+        versionCode = 1
+        versionName = "1.0"
         
         ndk {
+            abiFilters.add("armeabi-v7a")
             abiFilters.add("arm64-v8a")
         }
     }
 
-    // Fix: Disable strict linting to prevent build failures on warnings
-    lint {
-        abortOnError = false
-        checkReleaseBuilds = false
-    }
-
     buildTypes {
         release {
-            isMinifyEnabled = true
+            isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
-    
-    packaging {
-        jniLibs {
-            useLegacyPackaging = true
-        }
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-        }
-    }
-
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
     kotlinOptions { jvmTarget = "1.8" }
+    buildFeatures { viewBinding = true }
 }
 
 dependencies {
@@ -54,7 +40,9 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     
-    implementation("io.github.junkfood02.youtubedl-android:library:0.17.2")
-    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.17.2") 
+    // مكتبة التحميل بدون JavaScript
+    implementation("com.github.yausername.youtubedl-android:library:0.16.1")
+    
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
 }

@@ -1,367 +1,239 @@
 package org.alituama.mytube
 
 import android.Manifest
-import android.app.AlertDialog
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
-import android.os.Handler
-import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
-import android.view.View
-import android.webkit.CookieManager
-import android.webkit.WebSettings
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import android.widget.ArrayAdapter
+import android.util.Log
 import android.widget.Button
-import android.widget.EditText
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import com.google.android.material.textfield.TextInputEditText
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
-import com.yausername.youtubedl_android.mapper.VideoInfo
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
-import java.net.URI
-import org.alituama.mytube.R
+import java.net.URL
 
 class MainActivity : AppCompatActivity() {
 
+    private lateinit var etUrl: TextInputEditText
     private lateinit var tvStatus: TextView
-    private lateinit var etUrl: EditText
     private lateinit var progressBar: ProgressBar
-    private lateinit var webView: WebView 
-    private var lastUrl = ""
-    private var isEngineReady = false
-    private var isAnalysisRunning = false
+    private var isInitialized = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        initViews()
+        checkPermissions()
+        initializeDownloader()
+
+        // معالجة مشاركة النصوص
+        handleSharedIntent()
+
+        // مراقبة التغييرات في الحقل
+        etUrl.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {
+                val text = s.toString().trim()
+                if (isValidYouTubeUrl(text)) {
+                    // يمكن إضافة وظيفة تحميل تلقائي هنا
+                }
+            }
+            
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
+    }
+
+    private fun initViews() {
         etUrl = findViewById(R.id.etUrl)
         tvStatus = findViewById(R.id.tvStatus)
         progressBar = findViewById(R.id.progressBar)
-        webView = findViewById(R.id.webView)
-        val btnFetch = findViewById<Button>(R.id.btnFetch)
+        val btnDownload = findViewById<Button>(R.id.btnDownload)
 
-        setupHiddenBrowser()
-        checkPermissions()
-        initEngine()
-
-        etUrl.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: Editable?) {
-                val url = s.toString().trim()
-                if (url.length > 10 && (url.contains("http") || url.contains("youtu")) && url != lastUrl && !isAnalysisRunning) {
-                    processUrl(url)
-                }
+        btnDownload.setOnClickListener {
+            val url = etUrl.text.toString().trim()
+            if (url.isNotEmpty()) {
+                startDownload(url)
+            } else {
+                checkClipboardAndDownload()
             }
-        })
-
-        if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
-            intent.getStringExtra(Intent.EXTRA_TEXT)?.let { etUrl.setText(it) }
-        }
-
-        btnFetch.setOnClickListener {
-            val url = etUrl.text.toString()
-            if (url.isNotEmpty()) processUrl(url)
-            else checkClipboard()
         }
     }
 
-    private fun setupHiddenBrowser() {
-        webView.settings.apply {
-            javaScriptEnabled = true
-            domStorageEnabled = true
-            // Modern User-Agent to match typical Android Chrome behavior
-            userAgentString = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
-            mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-        }
-        
-        webView.webViewClient = object : WebViewClient() {
-            override fun onPageFinished(view: WebView?, url: String?) {
-                super.onPageFinished(view, url)
-            }
-        }
-        
-        CookieManager.getInstance().removeAllCookies(null)
-        CookieManager.getInstance().flush()
-    }
-
-    private fun initEngine() {
-        tvStatus.text = "IGNITING ENGINE..."
-        tvStatus.setTextColor(Color.GRAY)
-        progressBar.visibility = View.VISIBLE
-
-        CoroutineScope(Dispatchers.IO).launch {
+    private fun initializeDownloader() {
+        lifecycleScope.launch(Dispatchers.IO) {
             try {
-                YoutubeDL.getInstance().init(applicationContext)
-                // Try update, but don't crash if fails
-                try {
-                    YoutubeDL.getInstance().updateYoutubeDL(applicationContext, YoutubeDL.UpdateChannel.STABLE)
-                } catch (e: Exception) { e.printStackTrace() }
-
-                isEngineReady = true
                 withContext(Dispatchers.Main) {
-                    tvStatus.text = "READY (ARM64)"
-                    tvStatus.setTextColor(Color.GREEN)
-                    progressBar.visibility = View.INVISIBLE
+                    tvStatus.text = "جاري التهيئة..."
+                    progressBar.visibility = ProgressBar.VISIBLE
                 }
-            } catch (e: Exception) {
+                
+                YoutubeDL.getInstance().init(application)
+                
                 withContext(Dispatchers.Main) {
-                    tvStatus.text = "ENGINE ERROR"
-                    tvStatus.setTextColor(Color.RED)
-                    showErrorDialog("Init Failed: ${e.message}")
-                }
-            }
-        }
-    }
-
-    private fun processUrl(url: String) {
-        if (!isEngineReady) {
-            Toast.makeText(this, "Engine booting...", Toast.LENGTH_SHORT).show()
-            return
-        }
-        
-        isAnalysisRunning = true
-        lastUrl = url
-        tvStatus.text = "BYPASSING BOT CHECK..."
-        tvStatus.setTextColor(Color.parseColor("#FFD700"))
-        progressBar.visibility = View.VISIBLE
-        
-        // Load in hidden webview to generate fresh cookies/tokens
-        webView.loadUrl(url)
-        
-        // Wait longer for JS execution and cookie settlement
-        Handler(Looper.getMainLooper()).postDelayed({
-            extractCookiesAndAnalyze(url)
-        }, 5000)
-    }
-
-    private fun extractCookiesAndAnalyze(url: String) {
-        val rawCookies = CookieManager.getInstance().getCookie(url)
-        val cookies = rawCookies ?: ""
-        val userAgent = webView.settings.userAgentString
-        
-        if (cookies.isEmpty()) {
-            tvStatus.text = "RETRYING SESSION..."
-            Handler(Looper.getMainLooper()).postDelayed({ 
-                 val retryCookies = CookieManager.getInstance().getCookie(url) ?: ""
-                 performAnalysis(url, retryCookies, userAgent)
-            }, 3000)
-            return
-        }
-        
-        performAnalysis(url, cookies, userAgent)
-    }
-
-    // Helper to write valid Netscape cookie file
-    private fun createNetscapeCookieFile(url: String, cookieString: String): File? {
-        return try {
-            val file = File(cacheDir, "cookies.txt")
-            if (file.exists()) file.delete()
-            
-            val domain = try { URI(url).host.replace("www.", ".") } catch(e: Exception) { ".youtube.com" }
-            
-            val writer = file.bufferedWriter()
-            writer.write("# Netscape HTTP Cookie File
-")
-            
-            cookieString.split(";").forEach { raw ->
-                val trimmed = raw.trim()
-                if (trimmed.isNotEmpty()) {
-                    val parts = trimmed.split("=", limit = 2)
-                    if (parts.size == 2) {
-                        val name = parts[0].trim()
-                        val value = parts[1].trim()
-                        // domain flag path secure expiry name value
-                        // We use a distant future expiry and assume HTTPS (secure=TRUE)
-                        writer.write("$domain	TRUE	/	TRUE	2147483647	$name	$value
-")
+                    tvStatus.text = "جاهز للتحميل"
+                    progressBar.visibility = ProgressBar.GONE
+                    isInitialized = true
+                    
+                    // محاولة تحميل الرابط إذا كان موجوداً
+                    val savedUrl = etUrl.text.toString().trim()
+                    if (savedUrl.isNotEmpty() && isValidYouTubeUrl(savedUrl)) {
+                        startDownload(savedUrl)
                     }
                 }
-            }
-            writer.flush()
-            writer.close()
-            file
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
-    }
-
-    private fun performAnalysis(url: String, cookies: String, userAgent: String) {
-        tvStatus.text = "ANALYZING STREAM..."
-        
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val request = YoutubeDLRequest(url)
-                
-                // CRITICAL FIX: Use Netscape Cookie File instead of Header
-                val cookieFile = createNetscapeCookieFile(url, cookies)
-                if (cookieFile != null) {
-                    request.addOption("--cookies", cookieFile.absolutePath)
-                }
-                
-                // User-Agent must match strictly
-                request.addOption("--add-header", "User-Agent:$userAgent")
-                
-                request.addOption("--no-playlist")
-                request.addOption("--no-check-certificate")
-                request.addOption("--geo-bypass")
-                
-                val info: VideoInfo = YoutubeDL.getInstance().getInfo(request)
-                
-                withContext(Dispatchers.Main) {
-                    progressBar.visibility = View.INVISIBLE
-                    isAnalysisRunning = false
-                    showFormatSelector(info, url, cookies, userAgent)
-                }
-
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    progressBar.visibility = View.INVISIBLE
-                    isAnalysisRunning = false
-                    tvStatus.text = "FAILED"
-                    tvStatus.setTextColor(Color.RED)
-                    showErrorDialog("Bot Check Failed. Try waiting a moment.
-Error: ${e.message}")
+                    tvStatus.text = "خطأ في التهيئة: ${e.message}"
+                    progressBar.visibility = ProgressBar.GONE
+                    Log.e("MainActivity", "Initialization error", e)
                 }
             }
         }
     }
 
-    private fun showFormatSelector(info: VideoInfo, url: String, cookies: String, userAgent: String) {
-        val formats = info.formats ?: emptyList()
-        val options = ArrayList<VideoOption>()
-        val title = info.title ?: "Video"
-
-        val seenQualities = HashSet<String>()
-        for (f in formats) {
-            if (f.vcodec != "none" && f.height > 0) {
-                val q = "${f.height}p"
-                if (!seenQualities.contains(q)) {
-                    val desc = if (f.acodec != "none") "Standard" else "Video Only"
-                    options.add(VideoOption(q, desc, f.formatId ?: ""))
-                    seenQualities.add(q)
-                }
-            }
-        }
-        
-        options.sortByDescending { it.quality.replace("p", "").toIntOrNull() ?: 0 }
-        options.add(VideoOption("Audio Only", "MP3", "bestaudio/best"))
-
-        if (options.isEmpty()) {
-            tvStatus.text = "NO FORMATS"
+    private fun startDownload(url: String) {
+        if (!isInitialized) {
+            Toast.makeText(this, "التطبيق لم يكتمل تهيئته", Toast.LENGTH_SHORT).show()
             return
         }
 
-        val builder = AlertDialog.Builder(this, R.style.SyriacDialog)
-        builder.setTitle(title)
-        val adapter = ArrayAdapter(this, android.R.layout.select_dialog_singlechoice, options.map { "${it.quality} | ${it.desc}" })
-        
-        builder.setAdapter(adapter) { _, which ->
-            val selected = options[which]
-            startDownload(title, url, selected.formatId, selected.quality, cookies, userAgent)
+        if (!isValidYouTubeUrl(url)) {
+            Toast.makeText(this, "رابط YouTube غير صحيح", Toast.LENGTH_SHORT).show()
+            return
         }
-        
-        builder.setOnCancelListener { 
-            tvStatus.text = "READY" 
-            tvStatus.setTextColor(Color.GRAY)
-        }
-        builder.show()
-    }
 
-    private fun startDownload(title: String, url: String, formatId: String, qualityLabel: String, cookies: String, userAgent: String) {
-        tvStatus.text = "DOWNLOADING..."
-        tvStatus.setTextColor(Color.GREEN)
-        progressBar.visibility = View.VISIBLE
-        
-        val downloadDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "MyTube")
-        if (!downloadDir.exists()) downloadDir.mkdirs()
-
-        CoroutineScope(Dispatchers.IO).launch {
+        lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val request = YoutubeDLRequest(url)
-                
-                // CRITICAL FIX: Re-generate cookie file for download
-                val cookieFile = createNetscapeCookieFile(url, cookies)
-                if (cookieFile != null) {
-                    request.addOption("--cookies", cookieFile.absolutePath)
+                withContext(Dispatchers.Main) {
+                    tvStatus.text = "جاري التحميل..."
+                    progressBar.visibility = ProgressBar.VISIBLE
                 }
 
-                request.addOption("--add-header", "User-Agent:$userAgent")
-                
-                if (qualityLabel == "Audio Only") {
-                     request.addOption("-f", "bestaudio/best")
-                     request.addOption("-x")
-                     request.addOption("--audio-format", "mp3")
-                } else {
-                     request.addOption("-f", "$formatId+bestaudio/best")
+                val downloadDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "MyTube")
+                if (!downloadDir.exists()) {
+                    downloadDir.mkdirs()
                 }
+
+                val request = YoutubeDLRequest(url)
+                request.addOption("-o", "${downloadDir.absolutePath}/%(title)s.%(ext)s")
+                request.addOption("-f", "best[height<=1080][ext=mp4]")
                 
-                request.addOption("-o", downloadDir.absolutePath + "/%(title)s.%(ext)s")
-                request.addOption("--no-mtime")
-                request.addOption("--no-check-certificate")
-                
-                // Keep callback as null for safety
-                YoutubeDL.getInstance().execute(request, null, null)
+                // تجاوز JavaScript
+                request.addOption("--extractor-args", "youtube:player_client=android,youtube:player_skip=webpage")
+                request.addOption("--no-check-certificates")
+                request.addOption("--no-playlist")
+
+                val response = YoutubeDL.getInstance().execute(request)
 
                 withContext(Dispatchers.Main) {
-                    progressBar.visibility = View.INVISIBLE
-                    tvStatus.text = "COMPLETE"
-                    Toast.makeText(applicationContext, "Saved to Downloads/MyTube", Toast.LENGTH_LONG).show()
-                    etUrl.text.clear()
+                    progressBar.visibility = ProgressBar.GONE
+                    if (response.error) {
+                        tvStatus.text = "فشل التحميل"
+                        showErrorDialog("خطأ: ${response.outcome}")
+                    } else {
+                        tvStatus.text = "تم التحميل بنجاح!"
+                        Toast.makeText(this@MainActivity, "تم حفظ الفيديو", Toast.LENGTH_LONG).show()
+                        etUrl.setText("")
+                    }
                 }
-
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    progressBar.visibility = View.INVISIBLE
-                    tvStatus.text = "ERROR"
-                    tvStatus.setTextColor(Color.RED)
-                    showErrorDialog(e.message ?: "Download failed")
+                    progressBar.visibility = ProgressBar.GONE
+                    tvStatus.text = "خطأ: ${e.message}"
+                    showErrorDialog(e.message ?: "خطأ غير معروف")
+                    Log.e("MainActivity", "Download error", e)
                 }
             }
         }
     }
 
-    private fun showErrorDialog(msg: String) {
-        AlertDialog.Builder(this, R.style.SyriacDialog)
-            .setTitle("Error")
-            .setMessage(msg)
-            .setPositiveButton("OK", null)
-            .show()
-    }
-
-    private fun checkClipboard() {
+    private fun checkClipboardAndDownload() {
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = clipboard.primaryClip
         if (clip != null && clip.itemCount > 0) {
-            etUrl.setText(clip.getItemAt(0).text.toString())
+            val text = clip.getItemAt(0).text.toString()
+            if (isValidYouTubeUrl(text)) {
+                etUrl.setText(text)
+                startDownload(text)
+            } else {
+                Toast.makeText(this, "لا يوجد رابط YouTube في الحافظة", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            Toast.makeText(this, "الحافظة فارغة", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun handleSharedIntent() {
+        if (intent?.action == Intent.ACTION_SEND) {
+            intent.getStringExtra(Intent.EXTRA_TEXT)?.let { sharedText ->
+                if (isValidYouTubeUrl(sharedText)) {
+                    etUrl.setText(sharedText)
+                    startDownload(sharedText)
+                }
+            }
+        }
+    }
+
+    private fun isValidYouTubeUrl(url: String): Boolean {
+        return url.contains("youtube.com/watch") || 
+               url.contains("youtu.be/") ||
+               url.contains("youtube.com/shorts/")
+    }
+
+    private fun showErrorDialog(message: String) {
+        AlertDialog.Builder(this)
+            .setTitle("خطأ")
+            .setMessage(message)
+            .setPositiveButton("موافق", null)
+            .show()
     }
 
     private fun checkPermissions() {
-        if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != 0) {
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 100)
+        val permissions = mutableListOf<String>()
+        
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
         }
-        if (Build.VERSION.SDK_INT <= 29 && ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != 0) {
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 101)
+        
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+
+        if (permissions.isNotEmpty()) {
+            ActivityCompat.requestPermissions(this, permissions.toTypedArray(), 100)
         }
     }
 
-    data class VideoOption(val quality: String, val desc: String, val formatId: String)
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 100) {
+            val allGranted = grantResults.all { it == PackageManager.PERMISSION_GRANTED }
+            if (!allGranted) {
+                Toast.makeText(this, "الصلاحيات مطلوبة للتحميل", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 }

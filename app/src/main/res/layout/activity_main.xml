@@ -1,91 +1,70 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#121212"
-    android:padding="24dp">
-
-    <!-- HIDDEN BROWSER (1dp to be safe from 0px culling) -->
-    <WebView
-        android:id="@+id/webView"
-        android:layout_width="1dp"
-        android:layout_height="1dp"
-        android:visibility="visible"
-        android:alpha="0.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="#1e1e1e">
 
     <TextView
-        android:id="@+id/tvTitle"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:fontFamily="serif"
-        android:text="MYTUBE"
-        android:textColor="#FFD700"
-        android:textSize="32sp"
-        android:letterSpacing="0.2"
-        app:layout_constraintBottom_toTopOf="@+id/etUrl"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.3" />
-
-    <EditText
-        android:id="@+id/etUrl"
-        android:layout_width="0dp"
-        android:layout_height="60dp"
-        android:background="#1A1A1A"
-        android:hint="PASTE LINK HERE"
-        android:textColorHint="#505050"
-        android:textColor="#FFD700"
+        android:text="MyTube Downloader"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:textColor="#ffffff"
         android:gravity="center"
-        android:textSize="14sp"
-        android:inputType="textUri"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:layout_marginBottom="24dp" />
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="رابط فيديو YouTube"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etUrl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textUri"
+            android:textColor="#ffffff"
+            android:textColorHint="#888888" />
+
+    </com.google.android.material.textfield.TextInputLayout>
 
     <Button
-        android:id="@+id/btnFetch"
-        android:layout_width="0dp"
-        android:layout_height="50dp"
-        android:layout_marginTop="20dp"
-        android:backgroundTint="#1A1A1A"
-        android:text="ENGAGE"
-        android:textColor="#FFD700"
-        android:letterSpacing="0.1"
-        android:stateListAnimator="@null"
-        app:strokeColor="#33FFD700"
-        app:strokeWidth="1dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/etUrl" />
-
-    <TextView
-        android:id="@+id/tvStatus"
-        android:layout_width="wrap_content"
+        android:id="@+id/btnDownload"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="32dp"
-        android:text="SYSTEM IDLE"
-        android:textColor="#505050"
-        android:textSize="10sp"
-        android:letterSpacing="0.3"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/btnFetch" />
+        android:layout_marginTop="16dp"
+        android:text="تحميل"
+        android:textAllCaps="false"
+        style="@style/Widget.MaterialComponents.Button" />
 
     <ProgressBar
         android:id="@+id/progressBar"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:visibility="invisible"
-        android:indeterminateTint="#FFD700"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tvStatus" />
+        android:layout_gravity="center"
+        android:layout_marginTop="24dp"
+        android:visibility="gone" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+    <TextView
+        android:id="@+id/tvStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="جاهز للتحميل..."
+        android:textColor="#ffffff"
+        android:gravity="center"
+        android:textSize="14sp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="• انسخ رابط YouTube وادخله هنا\n• يمكنك مشاركة الروابط مباشرة من YouTube إلى هذا التطبيق\n• التحميل إلى مجلد التنزيلات"
+        android:textColor="#aaaaaa"
+        android:textSize="12sp" />
+
+</LinearLayout>

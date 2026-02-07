@@ -1,31 +1,81 @@
-
 import os
 import shutil
 import subprocess
+import json
+import requests
+from datetime import datetime
 
-# --- MYTUBE MANIFEST & COOKIE REPAIR ---
-
-def write_file(path, content):
-    parent = os.path.dirname(path)
-    if parent:
-        os.makedirs(parent, exist_ok=True)
-    with open(path, 'w', encoding='utf-8') as f:
+# ==========================================
+# 🛠️ الأدوات الأساسية
+# ==========================================
+def create_file(path, content):
+    directory = os.path.dirname(path)
+    if directory and not os.path.exists(directory):
+        os.makedirs(directory)
+    with open(path, "w", encoding="utf-8") as f:
         f.write(content.strip())
     print(f"✅ Created: {path}")
 
-print("🛠️ Applying Final Build Repairs...")
+def clean_structure():
+    # تنظيف المجلد بالكامل
+    if os.path.exists("app/src/main/java/org/alituama/mytube"):
+        shutil.rmtree("app/src/main/java/org/alituama/mytube")
+    print("🧹 Workspace cleaned.")
 
-# 1. ROOT build.gradle.kts
-write_file("build.gradle.kts", """
-// Top-level build file
+# ==========================================
+# 1. ملفات Gradle
+# ==========================================
+build_gradle_content = """
 plugins {
-    id("com.android.application") version "8.2.0" apply false
-    id("org.jetbrains.kotlin.android") version "1.9.20" apply false
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
 }
-""")
 
-# 2. SETTINGS.gradle.kts
-write_file("settings.gradle.kts", """
+android {
+    namespace = "org.alituama.mytube"
+    compileSdk = 34
+
+    defaultConfig {
+        applicationId = "org.alituama.mytube"
+        minSdk = 24
+        targetSdk = 34
+        versionCode = 1
+        versionName = "1.0"
+        
+        ndk {
+            abiFilters.add("armeabi-v7a")
+            abiFilters.add("arm64-v8a")
+        }
+    }
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+    kotlinOptions { jvmTarget = "1.8" }
+    buildFeatures { viewBinding = true }
+}
+
+dependencies {
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.google.android.material:material:1.11.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    
+    // مكتبة التحميل بدون JavaScript
+    implementation("com.github.yausername.youtubedl-android:library:0.16.1")
+    
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+}
+"""
+
+settings_gradle_content = """
 pluginManagement {
     repositories {
         google()
@@ -43,607 +93,53 @@ dependencyResolutionManagement {
 }
 rootProject.name = "MyTube"
 include(":app")
-""")
+"""
 
-# 3. APP build.gradle.kts
-write_file("app/build.gradle.kts", """
-plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-}
-
-android {
-    namespace = "org.alituama.mytube"
-    compileSdk = 34
-
-    defaultConfig {
-        applicationId = "org.alituama.mytube"
-        minSdk = 24
-        targetSdk = 34
-        versionCode = 315
-        versionName = "3.9.1"
-        
-        ndk {
-            abiFilters.add("arm64-v8a")
-        }
-    }
-
-    buildTypes {
-        release {
-            isMinifyEnabled = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-        }
-    }
-    
-    packaging {
-        jniLibs {
-            useLegacyPackaging = true
-        }
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
-    }
-    kotlinOptions { jvmTarget = "1.8" }
-}
-
-dependencies {
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.appcompat:appcompat:1.6.1")
-    implementation("com.google.android.material:material:1.11.0")
-    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
-    
-    implementation("io.github.junkfood02.youtubedl-android:library:0.17.2")
-    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.17.2") 
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
-}
-""")
-
-# 4. gradle.properties (Increased memory)
-write_file("gradle.properties", """
-org.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8
-android.useAndroidX=true
+gradle_properties_content = """
+org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8android.useAndroidX=true
 android.enableJetifier=true
-""")
+"""
 
-# 5. GitHub Workflow (Added clean task)
-write_file(".github/workflows/android.yml", """
-name: Android CI
+local_properties_content = """
+sdk.dir=/home/coder/.local/share/android-sdk
+ndk.dir=/home/coder/.local/share/android-sdk/ndk/25.1.8937393
+"""
 
-on:
-  push:
-    branches: [ "main" ]
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: gradle
-
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-
-    - name: Build with Gradle
-      run: ./gradlew clean assembleDebug --stacktrace
-
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: MyTube-ARM64
-        path: app/build/outputs/apk/debug/app-debug.apk
-        if-no-files-found: error
-""")
-
-# 6. MainActivity.kt (Preserved Netscape Logic)
-write_file("app/src/main/java/org/alituama/mytube/MainActivity.kt", r"""
-
-package org.alituama.mytube
-
-import android.Manifest
-import android.app.AlertDialog
-import android.content.ClipboardManager
-import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.graphics.Color
-import android.os.Build
-import android.os.Bundle
-import android.os.Environment
-import android.os.Handler
-import android.os.Looper
-import android.text.Editable
-import android.text.TextWatcher
-import android.view.View
-import android.webkit.CookieManager
-import android.webkit.WebSettings
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import android.widget.ArrayAdapter
-import android.widget.Button
-import android.widget.EditText
-import android.widget.ProgressBar
-import android.widget.TextView
-import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
-import com.yausername.youtubedl_android.YoutubeDL
-import com.yausername.youtubedl_android.YoutubeDLRequest
-import com.yausername.youtubedl_android.mapper.VideoInfo
-import kotlinx.coroutines.*
-import java.io.File
-import java.net.URI
-import org.alituama.mytube.R
-
-class MainActivity : AppCompatActivity() {
-
-    private lateinit var tvStatus: TextView
-    private lateinit var etUrl: EditText
-    private lateinit var progressBar: ProgressBar
-    private lateinit var webView: WebView 
-    private var lastUrl = ""
-    private var isEngineReady = false
-    private var isAnalysisRunning = false
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-
-        etUrl = findViewById(R.id.etUrl)
-        tvStatus = findViewById(R.id.tvStatus)
-        progressBar = findViewById(R.id.progressBar)
-        webView = findViewById(R.id.webView)
-        val btnFetch = findViewById<Button>(R.id.btnFetch)
-
-        setupHiddenBrowser()
-        checkPermissions()
-        initEngine()
-
-        etUrl.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: Editable?) {
-                val url = s.toString().trim()
-                if (url.length > 10 && (url.contains("http") || url.contains("youtu")) && url != lastUrl && !isAnalysisRunning) {
-                    processUrl(url)
-                }
-            }
-        })
-
-        if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
-            intent.getStringExtra(Intent.EXTRA_TEXT)?.let { etUrl.setText(it) }
-        }
-
-        btnFetch.setOnClickListener {
-            val url = etUrl.text.toString()
-            if (url.isNotEmpty()) processUrl(url)
-            else checkClipboard()
-        }
-    }
-
-    private fun setupHiddenBrowser() {
-        webView.settings.apply {
-            javaScriptEnabled = true
-            domStorageEnabled = true
-            // Modern User-Agent to match typical Android Chrome behavior
-            userAgentString = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
-            mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-        }
-        
-        webView.webViewClient = object : WebViewClient() {
-            override fun onPageFinished(view: WebView?, url: String?) {
-                super.onPageFinished(view, url)
-            }
-        }
-        
-        CookieManager.getInstance().removeAllCookies(null)
-        CookieManager.getInstance().flush()
-    }
-
-    private fun initEngine() {
-        tvStatus.text = "IGNITING ENGINE..."
-        tvStatus.setTextColor(Color.GRAY)
-        progressBar.visibility = View.VISIBLE
-
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                YoutubeDL.getInstance().init(applicationContext)
-                // Try update, but don't crash if fails
-                try {
-                    YoutubeDL.getInstance().updateYoutubeDL(applicationContext, YoutubeDL.UpdateChannel.STABLE)
-                } catch (e: Exception) { e.printStackTrace() }
-
-                isEngineReady = true
-                withContext(Dispatchers.Main) {
-                    tvStatus.text = "READY (ARM64)"
-                    tvStatus.setTextColor(Color.GREEN)
-                    progressBar.visibility = View.INVISIBLE
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    tvStatus.text = "ENGINE ERROR"
-                    tvStatus.setTextColor(Color.RED)
-                    showErrorDialog("Init Failed: ${e.message}")
-                }
-            }
-        }
-    }
-
-    private fun processUrl(url: String) {
-        if (!isEngineReady) {
-            Toast.makeText(this, "Engine booting...", Toast.LENGTH_SHORT).show()
-            return
-        }
-        
-        isAnalysisRunning = true
-        lastUrl = url
-        tvStatus.text = "BYPASSING BOT CHECK..."
-        tvStatus.setTextColor(Color.parseColor("#FFD700"))
-        progressBar.visibility = View.VISIBLE
-        
-        // Load in hidden webview to generate fresh cookies/tokens
-        webView.loadUrl(url)
-        
-        // Wait longer for JS execution and cookie settlement
-        Handler(Looper.getMainLooper()).postDelayed({
-            extractCookiesAndAnalyze(url)
-        }, 5000)
-    }
-
-    private fun extractCookiesAndAnalyze(url: String) {
-        val rawCookies = CookieManager.getInstance().getCookie(url)
-        val cookies = rawCookies ?: ""
-        val userAgent = webView.settings.userAgentString
-        
-        if (cookies.isEmpty()) {
-            tvStatus.text = "RETRYING SESSION..."
-            Handler(Looper.getMainLooper()).postDelayed({ 
-                 val retryCookies = CookieManager.getInstance().getCookie(url) ?: ""
-                 performAnalysis(url, retryCookies, userAgent)
-            }, 3000)
-            return
-        }
-        
-        performAnalysis(url, cookies, userAgent)
-    }
-
-    // Helper to write valid Netscape cookie file
-    private fun createNetscapeCookieFile(url: String, cookieString: String): File? {
-        return try {
-            val file = File(cacheDir, "cookies.txt")
-            if (file.exists()) file.delete()
-            
-            val domain = try { URI(url).host.replace("www.", ".") } catch(e: Exception) { ".youtube.com" }
-            
-            val writer = file.bufferedWriter()
-            writer.write("# Netscape HTTP Cookie File
-")
-            
-            cookieString.split(";").forEach { raw ->
-                val trimmed = raw.trim()
-                if (trimmed.isNotEmpty()) {
-                    val parts = trimmed.split("=", limit = 2)
-                    if (parts.size == 2) {
-                        val name = parts[0].trim()
-                        val value = parts[1].trim()
-                        // domain flag path secure expiry name value
-                        // We use a distant future expiry and assume HTTPS (secure=TRUE)
-                        writer.write("$domain	TRUE	/	TRUE	2147483647	$name	$value
-")
-                    }
-                }
-            }
-            writer.flush()
-            writer.close()
-            file
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
-    }
-
-    private fun performAnalysis(url: String, cookies: String, userAgent: String) {
-        tvStatus.text = "ANALYZING STREAM..."
-        
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val request = YoutubeDLRequest(url)
-                
-                // CRITICAL FIX: Use Netscape Cookie File instead of Header
-                val cookieFile = createNetscapeCookieFile(url, cookies)
-                if (cookieFile != null) {
-                    request.addOption("--cookies", cookieFile.absolutePath)
-                }
-                
-                // User-Agent must match strictly
-                request.addOption("--add-header", "User-Agent:$userAgent")
-                
-                request.addOption("--no-playlist")
-                request.addOption("--no-check-certificate")
-                request.addOption("--geo-bypass")
-                
-                val info: VideoInfo = YoutubeDL.getInstance().getInfo(request)
-                
-                withContext(Dispatchers.Main) {
-                    progressBar.visibility = View.INVISIBLE
-                    isAnalysisRunning = false
-                    showFormatSelector(info, url, cookies, userAgent)
-                }
-
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    progressBar.visibility = View.INVISIBLE
-                    isAnalysisRunning = false
-                    tvStatus.text = "FAILED"
-                    tvStatus.setTextColor(Color.RED)
-                    showErrorDialog("Bot Check Failed. Try waiting a moment.
-Error: ${e.message}")
-                }
-            }
-        }
-    }
-
-    private fun showFormatSelector(info: VideoInfo, url: String, cookies: String, userAgent: String) {
-        val formats = info.formats ?: emptyList()
-        val options = ArrayList<VideoOption>()
-        val title = info.title ?: "Video"
-
-        val seenQualities = HashSet<String>()
-        for (f in formats) {
-            if (f.vcodec != "none" && f.height > 0) {
-                val q = "${f.height}p"
-                if (!seenQualities.contains(q)) {
-                    val desc = if (f.acodec != "none") "Standard" else "Video Only"
-                    options.add(VideoOption(q, desc, f.formatId ?: ""))
-                    seenQualities.add(q)
-                }
-            }
-        }
-        
-        options.sortByDescending { it.quality.replace("p", "").toIntOrNull() ?: 0 }
-        options.add(VideoOption("Audio Only", "MP3", "bestaudio/best"))
-
-        if (options.isEmpty()) {
-            tvStatus.text = "NO FORMATS"
-            return
-        }
-
-        val builder = AlertDialog.Builder(this, R.style.SyriacDialog)
-        builder.setTitle(title)
-        val adapter = ArrayAdapter(this, android.R.layout.select_dialog_singlechoice, options.map { "${it.quality} | ${it.desc}" })
-        
-        builder.setAdapter(adapter) { _, which ->
-            val selected = options[which]
-            startDownload(title, url, selected.formatId, selected.quality, cookies, userAgent)
-        }
-        
-        builder.setOnCancelListener { 
-            tvStatus.text = "READY" 
-            tvStatus.setTextColor(Color.GRAY)
-        }
-        builder.show()
-    }
-
-    private fun startDownload(title: String, url: String, formatId: String, qualityLabel: String, cookies: String, userAgent: String) {
-        tvStatus.text = "DOWNLOADING..."
-        tvStatus.setTextColor(Color.GREEN)
-        progressBar.visibility = View.VISIBLE
-        
-        val downloadDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "MyTube")
-        if (!downloadDir.exists()) downloadDir.mkdirs()
-
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val request = YoutubeDLRequest(url)
-                
-                // CRITICAL FIX: Re-generate cookie file for download
-                val cookieFile = createNetscapeCookieFile(url, cookies)
-                if (cookieFile != null) {
-                    request.addOption("--cookies", cookieFile.absolutePath)
-                }
-
-                request.addOption("--add-header", "User-Agent:$userAgent")
-                
-                if (qualityLabel == "Audio Only") {
-                     request.addOption("-f", "bestaudio/best")
-                     request.addOption("-x")
-                     request.addOption("--audio-format", "mp3")
-                } else {
-                     request.addOption("-f", "$formatId+bestaudio/best")
-                }
-                
-                request.addOption("-o", downloadDir.absolutePath + "/%(title)s.%(ext)s")
-                request.addOption("--no-mtime")
-                request.addOption("--no-check-certificate")
-                
-                // Keep callback as null for safety
-                YoutubeDL.getInstance().execute(request, null, null)
-
-                withContext(Dispatchers.Main) {
-                    progressBar.visibility = View.INVISIBLE
-                    tvStatus.text = "COMPLETE"
-                    Toast.makeText(applicationContext, "Saved to Downloads/MyTube", Toast.LENGTH_LONG).show()
-                    etUrl.text.clear()
-                }
-
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    progressBar.visibility = View.INVISIBLE
-                    tvStatus.text = "ERROR"
-                    tvStatus.setTextColor(Color.RED)
-                    showErrorDialog(e.message ?: "Download failed")
-                }
-            }
-        }
-    }
-
-    private fun showErrorDialog(msg: String) {
-        AlertDialog.Builder(this, R.style.SyriacDialog)
-            .setTitle("Error")
-            .setMessage(msg)
-            .setPositiveButton("OK", null)
-            .show()
-    }
-
-    private fun checkClipboard() {
-        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        val clip = clipboard.primaryClip
-        if (clip != null && clip.itemCount > 0) {
-            etUrl.setText(clip.getItemAt(0).text.toString())
-        }
-    }
-
-    private fun checkPermissions() {
-        if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != 0) {
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 100)
-        }
-        if (Build.VERSION.SDK_INT <= 29 && ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != 0) {
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 101)
-        }
-    }
-
-    data class VideoOption(val quality: String, val desc: String, val formatId: String)
-}
-  
-""")
-
-# 7. Layout XML
-write_file("app/src/main/res/layout/activity_main.xml", """
-
-<?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="#121212"
-    android:padding="24dp">
-
-    <!-- HIDDEN BROWSER (1dp to be safe from 0px culling) -->
-    <WebView
-        android:id="@+id/webView"
-        android:layout_width="1dp"
-        android:layout_height="1dp"
-        android:visibility="visible"
-        android:alpha="0.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <TextView
-        android:id="@+id/tvTitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:fontFamily="serif"
-        android:text="MYTUBE"
-        android:textColor="#FFD700"
-        android:textSize="32sp"
-        android:letterSpacing="0.2"
-        app:layout_constraintBottom_toTopOf="@+id/etUrl"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.3" />
-
-    <EditText
-        android:id="@+id/etUrl"
-        android:layout_width="0dp"
-        android:layout_height="60dp"
-        android:background="#1A1A1A"
-        android:hint="PASTE LINK HERE"
-        android:textColorHint="#505050"
-        android:textColor="#FFD700"
-        android:gravity="center"
-        android:textSize="14sp"
-        android:inputType="textUri"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <Button
-        android:id="@+id/btnFetch"
-        android:layout_width="0dp"
-        android:layout_height="50dp"
-        android:layout_marginTop="20dp"
-        android:backgroundTint="#1A1A1A"
-        android:text="ENGAGE"
-        android:textColor="#FFD700"
-        android:letterSpacing="0.1"
-        android:stateListAnimator="@null"
-        app:strokeColor="#33FFD700"
-        app:strokeWidth="1dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/etUrl" />
-
-    <TextView
-        android:id="@+id/tvStatus"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="32dp"
-        android:text="SYSTEM IDLE"
-        android:textColor="#505050"
-        android:textSize="10sp"
-        android:letterSpacing="0.3"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/btnFetch" />
-
-    <ProgressBar
-        android:id="@+id/progressBar"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:visibility="invisible"
-        android:indeterminateTint="#FFD700"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tvStatus" />
-
-</androidx.constraintlayout.widget.ConstraintLayout>
-  
-""")
-
-# 8. Manifest (Fix: Removed missing @xml references)
-write_file("app/src/main/AndroidManifest.xml", """
-<?xml version="1.0" encoding="utf-8"?>
+# ==========================================
+# 2. AndroidManifest.xml
+# ==========================================
+manifest_content = """<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
-        android:label="MyTube"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.MyTube"
-        android:usesCleartextTraffic="true"
         tools:targetApi="31">
         
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.MyTube"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <intent-filter>
+            
+            <!-- دعم مشاركة الروابط -->
+            <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
@@ -651,17 +147,574 @@ write_file("app/src/main/AndroidManifest.xml", """
         </activity>
     </application>
 </manifest>
-""")
+"""
 
-print("🚀 Build Manifest Repaired!")
+# ==========================================
+# 3. MainActivity.kt المحسن
+# ==========================================
+main_activity_code = """package org.alituama.mytube
 
-# --- AUTO PUSH ---
-try:
-    print("🔄 Pushing to GitHub...")
-    subprocess.run(["git", "remote", "add", "origin", "https://github.com/alwansan/MyTube.git"], check=False, capture_output=True)
-    subprocess.run(["git", "add", "."], check=True)
-    subprocess.run(["git", "commit", "-m", "Fix: Removed missing XML refs & clean build"], check=True)
-    subprocess.run(["git", "push", "-u", "origin", "main"], check=True)
-    print("✅ Uploaded successfully.")
-except Exception as e:
-    print(f"❌ Git error: {e}")
+import android.Manifest
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Bundle
+import android.os.Environment
+import android.text.Editable
+import android.text.TextWatcher
+import android.util.Log
+import android.widget.Button
+import android.widget.ProgressBar
+import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import com.google.android.material.textfield.TextInputEditText
+import com.yausername.youtubedl_android.YoutubeDL
+import com.yausername.youtubedl_android.YoutubeDLRequest
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.net.URL
+
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var etUrl: TextInputEditText
+    private lateinit var tvStatus: TextView
+    private lateinit var progressBar: ProgressBar
+    private var isInitialized = false
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        initViews()        checkPermissions()
+        initializeDownloader()
+
+        // معالجة مشاركة النصوص
+        handleSharedIntent()
+
+        // مراقبة التغييرات في الحقل
+        etUrl.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {
+                val text = s.toString().trim()
+                if (isValidYouTubeUrl(text)) {
+                    // يمكن إضافة وظيفة تحميل تلقائي هنا
+                }
+            }
+            
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
+    }
+
+    private fun initViews() {
+        etUrl = findViewById(R.id.etUrl)
+        tvStatus = findViewById(R.id.tvStatus)
+        progressBar = findViewById(R.id.progressBar)
+        val btnDownload = findViewById<Button>(R.id.btnDownload)
+
+        btnDownload.setOnClickListener {
+            val url = etUrl.text.toString().trim()
+            if (url.isNotEmpty()) {
+                startDownload(url)
+            } else {
+                checkClipboardAndDownload()
+            }
+        }
+    }
+
+    private fun initializeDownloader() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                withContext(Dispatchers.Main) {
+                    tvStatus.text = "جاري التهيئة..."
+                    progressBar.visibility = ProgressBar.VISIBLE
+                }
+                
+                YoutubeDL.getInstance().init(application)
+                
+                withContext(Dispatchers.Main) {
+                    tvStatus.text = "جاهز للتحميل"
+                    progressBar.visibility = ProgressBar.GONE
+                    isInitialized = true                    
+                    // محاولة تحميل الرابط إذا كان موجوداً
+                    val savedUrl = etUrl.text.toString().trim()
+                    if (savedUrl.isNotEmpty() && isValidYouTubeUrl(savedUrl)) {
+                        startDownload(savedUrl)
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    tvStatus.text = "خطأ في التهيئة: ${e.message}"
+                    progressBar.visibility = ProgressBar.GONE
+                    Log.e("MainActivity", "Initialization error", e)
+                }
+            }
+        }
+    }
+
+    private fun startDownload(url: String) {
+        if (!isInitialized) {
+            Toast.makeText(this, "التطبيق لم يكتمل تهيئته", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (!isValidYouTubeUrl(url)) {
+            Toast.makeText(this, "رابط YouTube غير صحيح", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                withContext(Dispatchers.Main) {
+                    tvStatus.text = "جاري التحميل..."
+                    progressBar.visibility = ProgressBar.VISIBLE
+                }
+
+                val downloadDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "MyTube")
+                if (!downloadDir.exists()) {
+                    downloadDir.mkdirs()
+                }
+
+                val request = YoutubeDLRequest(url)
+                request.addOption("-o", "${downloadDir.absolutePath}/%(title)s.%(ext)s")
+                request.addOption("-f", "best[height<=1080][ext=mp4]")
+                
+                // تجاوز JavaScript
+                request.addOption("--extractor-args", "youtube:player_client=android,youtube:player_skip=webpage")
+                request.addOption("--no-check-certificates")
+                request.addOption("--no-playlist")
+
+                val response = YoutubeDL.getInstance().execute(request)
+                withContext(Dispatchers.Main) {
+                    progressBar.visibility = ProgressBar.GONE
+                    if (response.error) {
+                        tvStatus.text = "فشل التحميل"
+                        showErrorDialog("خطأ: ${response.outcome}")
+                    } else {
+                        tvStatus.text = "تم التحميل بنجاح!"
+                        Toast.makeText(this@MainActivity, "تم حفظ الفيديو", Toast.LENGTH_LONG).show()
+                        etUrl.setText("")
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    progressBar.visibility = ProgressBar.GONE
+                    tvStatus.text = "خطأ: ${e.message}"
+                    showErrorDialog(e.message ?: "خطأ غير معروف")
+                    Log.e("MainActivity", "Download error", e)
+                }
+            }
+        }
+    }
+
+    private fun checkClipboardAndDownload() {
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = clipboard.primaryClip
+        if (clip != null && clip.itemCount > 0) {
+            val text = clip.getItemAt(0).text.toString()
+            if (isValidYouTubeUrl(text)) {
+                etUrl.setText(text)
+                startDownload(text)
+            } else {
+                Toast.makeText(this, "لا يوجد رابط YouTube في الحافظة", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            Toast.makeText(this, "الحافظة فارغة", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun handleSharedIntent() {
+        if (intent?.action == Intent.ACTION_SEND) {
+            intent.getStringExtra(Intent.EXTRA_TEXT)?.let { sharedText ->
+                if (isValidYouTubeUrl(sharedText)) {
+                    etUrl.setText(sharedText)
+                    startDownload(sharedText)
+                }
+            }
+        }
+    }
+    private fun isValidYouTubeUrl(url: String): Boolean {
+        return url.contains("youtube.com/watch") || 
+               url.contains("youtu.be/") ||
+               url.contains("youtube.com/shorts/")
+    }
+
+    private fun showErrorDialog(message: String) {
+        AlertDialog.Builder(this)
+            .setTitle("خطأ")
+            .setMessage(message)
+            .setPositiveButton("موافق", null)
+            .show()
+    }
+
+    private fun checkPermissions() {
+        val permissions = mutableListOf<String>()
+        
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        }
+        
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+
+        if (permissions.isNotEmpty()) {
+            ActivityCompat.requestPermissions(this, permissions.toTypedArray(), 100)
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 100) {
+            val allGranted = grantResults.all { it == PackageManager.PERMISSION_GRANTED }
+            if (!allGranted) {
+                Toast.makeText(this, "الصلاحيات مطلوبة للتحميل", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+}
+"""
+
+# ==========================================
+# 4. ملفات XML# ==========================================
+activity_main_xml = """<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="#1e1e1e">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="MyTube Downloader"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:textColor="#ffffff"
+        android:gravity="center"
+        android:layout_marginBottom="24dp" />
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="رابط فيديو YouTube"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etUrl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textUri"
+            android:textColor="#ffffff"
+            android:textColorHint="#888888" />
+
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <Button
+        android:id="@+id/btnDownload"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="تحميل"
+        android:textAllCaps="false"
+        style="@style/Widget.MaterialComponents.Button" />
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginTop="24dp"        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/tvStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="جاهز للتحميل..."
+        android:textColor="#ffffff"
+        android:gravity="center"
+        android:textSize="14sp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="• انسخ رابط YouTube وادخله هنا\\n• يمكنك مشاركة الروابط مباشرة من YouTube إلى هذا التطبيق\\n• التحميل إلى مجلد التنزيلات"
+        android:textColor="#aaaaaa"
+        android:textSize="12sp" />
+
+</LinearLayout>
+"""
+
+# ==========================================
+# 5. ملفات الموارد الأخرى
+# ==========================================
+strings_xml = """<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MyTube</string>
+    <string name="permission_rationale">الصلاحيات مطلوبة لحفظ الفيديوهات</string>
+</resources>
+"""
+
+themes_xml = """<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.MyTube" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+        <item name="colorPrimary">#FF0000</item>
+        <item name="colorPrimaryVariant">#CC0000</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+    </style>
+</resources>
+"""
+
+colors_xml = """<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>    <color name="teal_700">#FF018786</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="dark_gray">#FF1e1e1e</color>
+</resources>
+"""
+
+backup_rules_xml = """<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </device-transfer>
+</data-extraction-rules>
+"""
+
+data_extraction_rules_xml = """<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <bool name="enable_data_extraction_rules">true</bool>
+</resources>
+"""
+
+# ==========================================
+# 6. GitHub Action
+# ==========================================
+github_action_yaml = """name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+        - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+    
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v2
+    
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+    
+    - name: Build Debug APK
+      run: ./gradlew assembleDebug
+    
+    - name: Upload APK
+      uses: actions/upload-artifact@v3
+      with:
+        name: app-debug-apk
+        path: app/build/outputs/apk/debug/app-debug.apk
+"""
+
+# ==========================================
+# 7. README
+# ==========================================
+readme_content = """# MyTube Downloader
+
+تطبيق Android لتحميل فيديوهات YouTube بجودة عالية.
+
+## المميزات
+- تحميل فيديوهات YouTube بجودة عالية
+- دعم مشاركة الروابط من التطبيقات الأخرى
+- واجهة بسيطة وسهلة الاستخدام
+- تحميل مباشر إلى مجلد التنزيلات
+
+## كيفية الاستخدام
+1. انسخ رابط فيديو YouTube
+2. افتح التطبيق وأدخل الرابط
+3. اضغط على زر التحميل
+4. انتظر حتى يكتمل التحميل
+
+## الملاحظات
+- يتطلب صلاحيات التخزين لحفظ الفيديوهات
+- التطبيق متوافق مع Android 7.0 فأعلى
+"""
+
+# ==========================================
+# تنفيذ الإنشاء
+# ==========================================
+def setup_project():    clean_structure()
+    
+    # إنشاء هيكل المجلدات
+    dirs = [
+        "app/src/main/java/org/alituama/mytube",
+        "app/src/main/res/layout",
+        "app/src/main/res/values",
+        "app/src/main/res/xml",
+        "app/src/main/res/drawable",
+        "app/src/main/res/mipmap-hdpi",
+        "app/src/main/res/mipmap-mdpi",
+        "app/src/main/res/mipmap-xhdpi",
+        "app/src/main/res/mipmap-xxhdpi",
+        "app/src/main/res/mipmap-xxxhdpi",
+        ".github/workflows"
+    ]
+    
+    for dir_path in dirs:
+        os.makedirs(dir_path, exist_ok=True)
+    
+    # إنشاء الملفات
+    create_file("build.gradle.kts", build_gradle_content)
+    create_file("settings.gradle.kts", settings_gradle_content)
+    create_file("gradle.properties", gradle_properties_content)
+    create_file("local.properties", local_properties_content)
+    
+    create_file("app/build.gradle.kts", build_gradle_content)
+    create_file("app/src/main/AndroidManifest.xml", manifest_content)
+    create_file("app/src/main/java/org/alituama/mytube/MainActivity.kt", main_activity_code)
+    
+    create_file("app/src/main/res/layout/activity_main.xml", activity_main_xml)
+    create_file("app/src/main/res/values/strings.xml", strings_xml)
+    create_file("app/src/main/res/values/themes.xml", themes_xml)
+    create_file("app/src/main/res/values/colors.xml", colors_xml)
+    create_file("app/src/main/res/xml/backup_rules.xml", backup_rules_xml)
+    create_file("app/src/main/res/xml/data_extraction_rules.xml", data_extraction_rules_xml)
+    
+    create_file(".github/workflows/android.yml", github_action_yaml)
+    create_file("README.md", readme_content)
+    
+    # إنشاء ملفات الأيقونة الفارغة (يمكن استبدالها لاحقاً)
+    icon_content = """<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+  <path
+      android:fillColor="#FF0000"
+      android:pathData="M34,34 L74,34 L74,74 L34,74 Z"/></vector>"""
+    
+    icon_files = [
+        "app/src/main/res/mipmap-hdpi/ic_launcher.xml",
+        "app/src/main/res/mipmap-mdpi/ic_launcher.xml", 
+        "app/src/main/res/mipmap-xhdpi/ic_launcher.xml",
+        "app/src/main/res/mipmap-xxhdpi/ic_launcher.xml",
+        "app/src/main/res/mipmap-xxxhdpi/ic_launcher.xml"
+    ]
+    
+    for icon_file in icon_files:
+        create_file(icon_file, icon_content)
+    
+    # إنشاء أيقونة الجولف
+    round_icon_content = """<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/red"/>
+    <foreground android:drawable="@drawable/ic_launcher_foreground"/>
+</adaptive-icon>"""
+    
+    create_file("app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml", """<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/red"/>
+    <foreground android:drawable="@drawable/ic_launcher_foreground"/>
+</adaptive-icon>""")
+    
+    # إنشاء ملف اللون الأحمر
+    create_file("app/src/main/res/values/colors.xml", """<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="red">#FF0000</color>
+    <color name="dark_gray">#FF1e1e1e</color>
+</resources>""")
+    
+    print("✅ تم إنشاء المشروع بنجاح!")
+
+# ==========================================
+# تنفيذ Git
+# ==========================================
+def git_operations():
+    try:
+        # تهيئة Git إذا لم يكن موجوداً
+        if not os.path.exists(".git"):
+            subprocess.run(["git", "init"], check=True)            subprocess.run(["git", "config", "user.name", "alwansan"], check=True)
+            subprocess.run(["git", "config", "user.email", "alwansan@example.com"], check=True)
+        
+        # إضافة جميع الملفات
+        subprocess.run(["git", "add", "."], check=True)
+        
+        # إنشاء_commit
+        subprocess.run(["git", "commit", "-m", "Initial commit: MyTube Downloader v1.0"], check=True)
+        
+        # إضافة المستودع
+        repo_url = "https://github.com/alwansan/MyTube"
+        subprocess.run(["git", "remote", "add", "origin", repo_url], check=False)  # قد يكون موجوداً
+        
+        # دفع إلى main
+        subprocess.run(["git", "branch", "-M", "main"], check=True)
+        subprocess.run(["git", "push", "-u", "origin", "main", "--force"], check=True)
+        
+        print("✅ تم الرفع إلى GitHub بنجاح!")
+        print("🔗 https://github.com/alwansan/MyTube")
+        
+    except subprocess.CalledProcessError as e:
+        print(f"❌ خطأ في Git: {e}")
+    except Exception as e:
+        print(f"❌ خطأ غير متوقع: {e}")
+
+# ==========================================
+# تنفيذ كل شيء
+# ==========================================
+if __name__ == "__main__":
+    print("🚀 بدء إنشاء مشروع MyTube...")
+    setup_project()
+    print("\n📤 جاري الرفع إلى GitHub...")
+    git_operations()
+    print("\n🎉 تم الانتهاء من المشروع!")
