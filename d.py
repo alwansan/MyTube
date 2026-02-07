@@ -1,10 +1,10 @@
 import os
 import subprocess
 
-# تصحيح ملف build.gradle.kts ليدعم Kotlin DSL بشكل صحيح
+# تصحيح ملف build.gradle.kts لإضافة أرقام الإصدار للإضافات
 build_gradle_content = """plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
+    id("com.android.application") version "8.2.0" apply false
+    id("org.jetbrains.kotlin.android") version "1.9.20" apply false
 }
 
 android {
@@ -55,7 +55,7 @@ print("✅ تم تصحيح ملف build.gradle.kts")
 # Git operations
 try:
     subprocess.run(["git", "add", "."], check=True)
-    subprocess.run(["git", "commit", "-m", "Fix: Correct build.gradle.kts Kotlin DSL syntax"], check=True)
+    subprocess.run(["git", "commit", "-m", "Fix: Add version numbers to plugins"], check=True)
     subprocess.run(["git", "push"], check=True)
     print("✅ تم الرفع إلى GitHub")
 except subprocess.CalledProcessError as e:
