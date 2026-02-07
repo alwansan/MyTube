@@ -1,54 +1,67 @@
 import os
 import subprocess
 
-# تحديث ملف GitHub Action
-github_action_yaml = """name: Build APK
+# تحديث ملف build.gradle.kts
+build_gradle_content = """plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+}
 
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+android {
+    namespace = "org.alituama.mytube"
+    compileSdk = 34
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+    defaultConfig {
+        applicationId = "org.alituama.mytube"
+        minSdk = 24
+        targetSdk = 34
+        versionCode = 1
+        versionName = "1.0"
+        
+        ndk {
+            abiFilters.add("armeabi-v7a")
+            abiFilters.add("arm64-v8a")
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+    kotlinOptions { jvmTarget = "1.8" }
+    buildFeatures { viewBinding = true }
+}
+
+dependencies {
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.google.android.material:material:1.11.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     
-    steps:
-    - uses: actions/checkout@v4
+    // مكتبة التحميل بدون JavaScript
+    implementation("com.github.yausername.youtubedl-android:library:0.16.1")
     
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-    
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
-    
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-    
-    - name: Build Debug APK
-      run: ./gradlew assembleDebug
-    
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: app-debug-apk
-        path: app/build/outputs/apk/debug/app-debug.apk
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+}
 """
 
 # إنشاء الملف
-with open(".github/workflows/android.yml", "w", encoding="utf-8") as f:
-    f.write(github_action_yaml)
+with open("build.gradle.kts", "w", encoding="utf-8") as f:
+    f.write(build_gradle_content)
 
-print("✅ تم تحديث ملف GitHub Action")
+print("✅ تم تحديث ملف build.gradle.kts")
 
 # Git operations
 try:
     subprocess.run(["git", "add", "."], check=True)
-    subprocess.run(["git", "commit", "-m", "Fix: Update GitHub Actions versions"], check=True)
+    subprocess.run(["git", "commit", "-m", "Fix: Update build.gradle.kts plugins syntax"], check=True)
     subprocess.run(["git", "push"], check=True)
     print("✅ تم الرفع إلى GitHub")
 except subprocess.CalledProcessError as e:
