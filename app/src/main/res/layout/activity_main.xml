@@ -41,14 +41,6 @@
         android:textAllCaps="false"
         style="@style/Widget.MaterialComponents.Button" />
 
-    <ProgressBar
-        android:id="@+id/progressBar"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:layout_marginTop="24dp"
-        android:visibility="gone" />
-
     <TextView
         android:id="@+id/tvStatus"
         android:layout_width="match_parent"
@@ -58,13 +50,5 @@
         android:textColor="#ffffff"
         android:gravity="center"
         android:textSize="14sp" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="• انسخ رابط YouTube وادخله هنا\n• يمكنك مشاركة الروابط مباشرة من YouTube إلى هذا التطبيق\n• التحميل إلى مجلد التنزيلات"
-        android:textColor="#aaaaaa"
-        android:textSize="12sp" />
 
 </LinearLayout>
