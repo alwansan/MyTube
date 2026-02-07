@@ -1,7 +1,7 @@
 import os
 import subprocess
 
-# تصحيح ملف settings.gradle.kts
+# تصحيح ملف settings.gradle.kts ليدعم Kotlin DSL بشكل صحيح
 settings_gradle_content = """pluginManagement {
     repositories {
         google()
@@ -14,11 +14,13 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven { url 'https://jitpack.io' }
+        maven {
+            url = uri("https://jitpack.io")
+        }
     }
 }
 rootProject.name = "MyTube"
-include ':app'
+include(":app")
 """
 
 # كتابة الملف
@@ -30,7 +32,7 @@ print("✅ تم تصحيح ملف settings.gradle.kts")
 # Git operations
 try:
     subprocess.run(["git", "add", "."], check=True)
-    subprocess.run(["git", "commit", "-m", "Fix: Correct settings.gradle.kts syntax"], check=True)
+    subprocess.run(["git", "commit", "-m", "Fix: Correct settings.gradle.kts Kotlin DSL syntax"], check=True)
     subprocess.run(["git", "push"], check=True)
     print("✅ تم الرفع إلى GitHub")
 except subprocess.CalledProcessError as e:
